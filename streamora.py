@@ -83,6 +83,9 @@ class StreamoraApp:
         self.vlc = None
         self.vlc_instance = None
         self.vlc_player = None
+        self.is_muted = False
+        self.saved_volume = 80
+        self.seek_update_id = None
 
         self.main_frame = ttk.Frame(self.root, padding=12)
         self.main_frame.pack(fill="both", expand=True)
@@ -391,6 +394,39 @@ class StreamoraApp:
         self.video_surface = tk.Frame(self.player_box, bg="black", height=210)
         self.video_surface.pack(fill="x", expand=True)
         self.video_surface.pack_propagate(False)
+
+        # --- Playback controls ---
+        controls_bar = ttk.Frame(self.player_box)
+        controls_bar.pack(fill="x", pady=(4, 0))
+
+        self.btn_play_pause = ttk.Button(controls_bar, text="▶", width=4, command=self.toggle_play_pause)
+        self.btn_play_pause.pack(side="left", padx=2)
+        self.btn_stop = ttk.Button(controls_bar, text="⏹", width=4, command=self.stop_playback)
+        self.btn_stop.pack(side="left", padx=2)
+        self.btn_mute = ttk.Button(controls_bar, text="🔊", width=4, command=self.toggle_mute)
+        self.btn_mute.pack(side="left", padx=2)
+
+        self.volume_var = tk.IntVar(value=80)
+        self.volume_slider = ttk.Scale(
+            controls_bar, from_=0, to=100, orient="horizontal",
+            variable=self.volume_var, command=self._on_volume_change, length=100,
+        )
+        self.volume_slider.pack(side="left", padx=(4, 8))
+
+        self.elapsed_label = ttk.Label(controls_bar, text="00:00", width=6)
+        self.elapsed_label.pack(side="left")
+
+        self.seek_var = tk.DoubleVar(value=0)
+        self.seek_bar = ttk.Scale(
+            controls_bar, from_=0, to=1000, orient="horizontal",
+            variable=self.seek_var, length=350,
+        )
+        self.seek_bar.pack(side="left", fill="x", expand=True, padx=4)
+        self.seek_bar.bind("<ButtonRelease-1>", self._on_seek)
+
+        self.duration_label = ttk.Label(controls_bar, text="00:00", width=6)
+        self.duration_label.pack(side="left")
+
         self.player_status = ttk.Label(self.player_box, text="Aucune lecture.")
         self.player_status.pack(anchor="w", pady=(4, 0))
 
@@ -424,8 +460,111 @@ class StreamoraApp:
             return
         media = self.vlc_instance.media_new(str(path))
         self.vlc_player.set_media(media)
+        self.vlc_player.audio_set_volume(self.volume_var.get())
         self.vlc_player.play()
         self.player_status.config(text=f"Lecture: {path.name}")
+        self.btn_play_pause.config(text="⏸")
+        self._start_seek_update()
+
+    # ── Playback control helpers ──────────────────────────────────────
+
+    def toggle_play_pause(self):
+        if self.vlc_player is None:
+            return
+        state = self.vlc_player.get_state()
+        playing_state = self.vlc.State.Playing  # type: ignore[attr-defined]
+        paused_state = self.vlc.State.Paused  # type: ignore[attr-defined]
+        if state == playing_state:
+            self.vlc_player.pause()
+            self.btn_play_pause.config(text="▶")
+            self.player_status.config(text="En pause")
+        elif state == paused_state:
+            self.vlc_player.play()
+            self.btn_play_pause.config(text="⏸")
+            self.player_status.config(text="Lecture reprise")
+
+    def stop_playback(self):
+        if self.vlc_player is None:
+            return
+        self.vlc_player.stop()
+        self.btn_play_pause.config(text="▶")
+        self.seek_var.set(0)
+        self.elapsed_label.config(text="00:00")
+        self.duration_label.config(text="00:00")
+        self.player_status.config(text="Aucune lecture.")
+        self._stop_seek_update()
+
+    def toggle_mute(self):
+        if self.vlc_player is None:
+            return
+        if self.is_muted:
+            self.vlc_player.audio_set_volume(self.saved_volume)
+            self.volume_var.set(self.saved_volume)
+            self.btn_mute.config(text="🔊")
+            self.is_muted = False
+        else:
+            self.saved_volume = self.vlc_player.audio_get_volume()
+            self.vlc_player.audio_set_volume(0)
+            self.volume_var.set(0)
+            self.btn_mute.config(text="🔇")
+            self.is_muted = True
+
+    def _on_volume_change(self, value: str):
+        vol = int(float(value))
+        if self.vlc_player is not None:
+            self.vlc_player.audio_set_volume(vol)
+        if vol == 0:
+            self.btn_mute.config(text="🔇")
+            self.is_muted = True
+        else:
+            self.btn_mute.config(text="🔊")
+            self.is_muted = False
+            self.saved_volume = vol
+
+    def _on_seek(self, _event):
+        if self.vlc_player is None:
+            return
+        pos = self.seek_var.get() / 1000.0
+        self.vlc_player.set_position(pos)
+
+    @staticmethod
+    def _format_ms(ms: int) -> str:
+        total_secs = max(0, ms // 1000)
+        mins, secs = divmod(total_secs, 60)
+        hours, mins = divmod(mins, 60)
+        if hours > 0:
+            return f"{hours}:{mins:02d}:{secs:02d}"
+        return f"{mins:02d}:{secs:02d}"
+
+    def _start_seek_update(self):
+        self._stop_seek_update()
+        self._poll_seek()
+
+    def _stop_seek_update(self):
+        if self.seek_update_id is not None:
+            self.root.after_cancel(self.seek_update_id)
+            self.seek_update_id = None
+
+    def _poll_seek(self):
+        if self.vlc_player is not None:
+            state = self.vlc_player.get_state()
+            ended_state = self.vlc.State.Ended  # type: ignore[attr-defined]
+            if state == ended_state:
+                self.btn_play_pause.config(text="▶")
+                self.seek_var.set(1000)
+                self.player_status.config(text="Lecture terminée.")
+                self._stop_seek_update()
+                return
+
+            pos = self.vlc_player.get_position()
+            length = self.vlc_player.get_length()
+            current_time = self.vlc_player.get_time()
+            if pos >= 0:
+                self.seek_var.set(pos * 1000)
+            self.elapsed_label.config(text=self._format_ms(current_time))
+            self.duration_label.config(text=self._format_ms(length))
+
+        self.seek_update_id = self.root.after(500, self._poll_seek)
 
     def copy_stream_key(self):
         if not self.current_user:
