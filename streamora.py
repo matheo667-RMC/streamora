@@ -2254,6 +2254,8 @@ class StreamoraApp:
             "Catégorie", "Catégorie du film (ex: Action, Comédie, Marvel):",
             parent=self.root,
         )
+        if category is None:
+            return
         if not category:
             category = "Divers"
 
@@ -2282,6 +2284,8 @@ class StreamoraApp:
             "Catégorie", "Catégorie pour tous les films du dossier:",
             parent=self.root,
         )
+        if category is None:
+            return
         if not category:
             category = "Divers"
 
@@ -2311,6 +2315,8 @@ class StreamoraApp:
             "Nom de la série", "Nom de la série:",
             parent=self.root,
         )
+        if series_name is None:
+            return
         if not series_name:
             series_name = Path(folder).name
 
@@ -2318,6 +2324,8 @@ class StreamoraApp:
             "Catégorie", "Catégorie (ex: Action, Anime, Comédie):",
             parent=self.root,
         )
+        if category is None:
+            return
         if not category:
             category = "Divers"
 
@@ -2414,8 +2422,8 @@ class StreamoraApp:
         season = simpledialog.askinteger(
             "Saison", "Numéro de la saison:", parent=self.root, minvalue=1,
         )
-        if not season:
-            season = 1
+        if season is None:
+            return
 
         dest_dir = LIBRARY_ROOT / "series" / result["value"] / f"Season {season}"
         dest_dir.mkdir(parents=True, exist_ok=True)
