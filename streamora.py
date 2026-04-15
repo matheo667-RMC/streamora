@@ -1152,10 +1152,12 @@ class StreamoraApp:
 
         salt = secrets.token_hex(16)
         self.conn.execute(
-            "UPDATE users SET salt = ?, password_hash = ? WHERE id = ?",
+            "UPDATE users SET salt = ?, password_hash = ?, session_token = NULL WHERE id = ?",
             (salt, hash_password(new_pw, salt), row["id"]),
         )
         self.conn.commit()
+        # Invalidate any existing session file (force re-login)
+        SESSION_FILE.unlink(missing_ok=True)
         messagebox.showinfo("OK", "Mot de passe changé avec succès !")
 
     def _prompt_stream_key(self, username: str) -> str | None:
