@@ -2,13 +2,13 @@ import hashlib
 import json
 import os
 import platform
-import random
 import re
 import secrets
 import sqlite3
 import string
 import subprocess
 import importlib
+import time
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, simpledialog, ttk
@@ -25,13 +25,26 @@ DEFAULT_FILM_CATEGORIES = ["Toutes", "Action", "Aventure", "Comédie", "Marvel",
 DEFAULT_SERIES_CATEGORIES = ["Toutes", "Action", "Aventure", "Comédie", "Marvel", "Anime", "Documentaire", "Sci-Fi"]
 
 
+PBKDF2_ITERATIONS = 600_000
+
+
 def hash_password(password: str, salt: str) -> str:
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        iterations=PBKDF2_ITERATIONS,
+    ).hex()
+
+
+def _legacy_hash(password: str, salt: str) -> str:
+    """Old SHA-256 hash kept only for migrating existing accounts."""
     return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
 
 
 def generate_stream_key() -> str:
     charset = string.ascii_uppercase + string.digits
-    return "FRZ" + "".join(random.choice(charset) for _ in range(12))
+    return "FRZ" + "".join(secrets.choice(charset) for _ in range(12))
 
 
 def open_media(path: Path):
@@ -83,6 +96,10 @@ class StreamoraApp:
         self.vlc = None
         self.vlc_instance = None
         self.vlc_player = None
+
+        self._login_attempts: dict[str, list[float]] = {}
+        self._MAX_LOGIN_ATTEMPTS = 5
+        self._LOGIN_LOCKOUT_SECS = 60.0
 
         self.main_frame = ttk.Frame(self.root, padding=12)
         self.main_frame.pack(fill="both", expand=True)
@@ -279,13 +296,43 @@ class StreamoraApp:
         if not self._validate_credentials(username, password):
             return
 
+        now = time.monotonic()
+        attempts = self._login_attempts.get(username, [])
+        # Prune attempts older than the lockout window
+        attempts = [t for t in attempts if now - t < self._LOGIN_LOCKOUT_SECS]
+        self._login_attempts[username] = attempts
+        if len(attempts) >= self._MAX_LOGIN_ATTEMPTS:
+            messagebox.showerror(
+                "Erreur",
+                f"Trop de tentatives. Réessaie dans {int(self._LOGIN_LOCKOUT_SECS - (now - attempts[0]))} s.",
+            )
+            return
+
         row = self.conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if not row:
+            self._login_attempts.setdefault(username, []).append(now)
             messagebox.showerror("Erreur", "Compte introuvable.")
             return
-        if hash_password(password, row["salt"]) != row["password_hash"]:
+
+        # Support transparent migration from legacy SHA-256 hashes
+        pw_ok = hash_password(password, row["salt"]) == row["password_hash"]
+        if not pw_ok and _legacy_hash(password, row["salt"]) == row["password_hash"]:
+            # Re-hash with PBKDF2 so future logins use the stronger hash
+            new_salt = secrets.token_hex(16)
+            self.conn.execute(
+                "UPDATE users SET salt = ?, password_hash = ? WHERE id = ?",
+                (new_salt, hash_password(password, new_salt), row["id"]),
+            )
+            self.conn.commit()
+            pw_ok = True
+
+        if not pw_ok:
+            self._login_attempts.setdefault(username, []).append(now)
             messagebox.showerror("Erreur", "Mot de passe incorrect.")
             return
+
+        # Successful login clears attempts
+        self._login_attempts.pop(username, None)
         stream_key_input = self.prompt_stream_key(username)
         if not stream_key_input or stream_key_input.strip().upper() != (row["stream_key"] or "").upper():
             messagebox.showerror("Erreur", "Stream Key invalide.")
@@ -306,11 +353,13 @@ class StreamoraApp:
             messagebox.showerror("Erreur", "Compte introuvable.")
             return
 
-        code = secrets.token_hex(3).upper()
-        messagebox.showinfo("Code", f"Code reset: {code}")
-        typed = simpledialog.askstring("Code", "Entre le code:", parent=self.root)
-        if typed != code:
-            messagebox.showerror("Erreur", "Code invalide.")
+        stream_key = simpledialog.askstring(
+            "Vérification",
+            "Entre ta Stream Key pour confirmer ton identité:",
+            parent=self.root,
+        )
+        if not stream_key or stream_key.strip().upper() != (row["stream_key"] or "").upper():
+            messagebox.showerror("Erreur", "Stream Key invalide.")
             return
 
         new_pw = simpledialog.askstring("Nouveau", "Nouveau mot de passe:", parent=self.root, show="*")
@@ -356,13 +405,16 @@ class StreamoraApp:
         return result["value"]
 
     def show_dashboard(self):
+        if not self._require_auth():
+            return
         self._clear()
         self._brand_header(self.main_frame)
 
         info = ttk.Frame(self.main_frame)
         info.pack(fill="x", pady=(0, 4))
         ttk.Label(info, text=f"Utilisateur: {self.current_user['username']}", font=("Arial", 10, "bold")).pack(side="left")
-        ttk.Label(info, text=f"Stream Key: {self.current_user['stream_key']}", foreground="#991b1b").pack(side="left", padx=14)
+        masked_key = self.current_user["stream_key"][:3] + "*" * 9 + self.current_user["stream_key"][-3:]
+        ttk.Label(info, text=f"Stream Key: {masked_key}", foreground="#991b1b").pack(side="left", padx=14)
         ttk.Button(info, text="Copier la clé", command=self.copy_stream_key).pack(side="left", padx=4)
         ttk.Button(info, text="Déconnexion", command=self.logout).pack(side="right")
 
@@ -419,6 +471,8 @@ class StreamoraApp:
             return False
 
     def play_in_app(self, path: Path):
+        if not self._require_auth():
+            return
         if not self._ensure_vlc_player():
             open_media(path)
             return
@@ -427,8 +481,15 @@ class StreamoraApp:
         self.vlc_player.play()
         self.player_status.config(text=f"Lecture: {path.name}")
 
-    def copy_stream_key(self):
+    def _require_auth(self) -> bool:
         if not self.current_user:
+            messagebox.showerror("Erreur", "Tu dois être connecté.")
+            self.show_auth_screen()
+            return False
+        return True
+
+    def copy_stream_key(self):
+        if not self._require_auth():
             return
         self.root.clipboard_clear()
         self.root.clipboard_append(self.current_user["stream_key"])
@@ -538,6 +599,22 @@ class StreamoraApp:
                 return f
         return None
 
+    @staticmethod
+    def _safe_trailer_path(meta_trailer: str | None, media_dir: Path) -> Path | None:
+        """Resolve a trailer path from metadata while blocking path traversal."""
+        if not meta_trailer:
+            return None
+        candidate = Path(meta_trailer)
+        if candidate.is_absolute():
+            return None  # reject absolute paths from metadata
+        resolved = (media_dir / candidate).resolve()
+        # Ensure the resolved path stays inside LIBRARY_ROOT
+        try:
+            resolved.relative_to(LIBRARY_ROOT.resolve())
+        except ValueError:
+            return None
+        return resolved if resolved.exists() else None
+
     def _create_poster_button(self, parent, image_path: Path | None, text: str, command):
         card = ttk.Frame(parent)
         if image_path is not None:
@@ -578,10 +655,7 @@ class StreamoraApp:
                 media_dir = films_root
 
             meta = self._read_optional_metadata(media_dir)
-            trailer = meta.get("trailer")
-            trailer_path = Path(trailer) if trailer else self._find_trailer(media_dir)
-            if trailer and not trailer_path.is_absolute():
-                trailer_path = media_dir / trailer
+            trailer_path = self._safe_trailer_path(meta.get("trailer"), media_dir) or self._find_trailer(media_dir)
 
             results.append(
                 {
@@ -590,7 +664,7 @@ class StreamoraApp:
                     "category": category,
                     "video": video,
                     "poster": self._find_image(media_dir),
-                    "trailer": trailer_path if trailer_path and trailer_path.exists() else None,
+                    "trailer": trailer_path,
                 }
             )
 
@@ -624,10 +698,7 @@ class StreamoraApp:
             meta = self._read_optional_metadata(series_dir)
             key = (category, meta.get("title") or series_name)
             if key not in buckets:
-                trailer = meta.get("trailer")
-                trailer_path = Path(trailer) if trailer else self._find_trailer(series_dir)
-                if trailer and not trailer_path.is_absolute():
-                    trailer_path = series_dir / trailer
+                trailer_path = self._safe_trailer_path(meta.get("trailer"), series_dir) or self._find_trailer(series_dir)
 
                 buckets[key] = {
                     "title": meta.get("title") or series_name,
@@ -635,7 +706,7 @@ class StreamoraApp:
                     "category": category,
                     "episodes": [],
                     "poster": self._find_image(series_dir),
-                    "trailer": trailer_path if trailer_path and trailer_path.exists() else None,
+                    "trailer": trailer_path,
                 }
 
             season_match = re.search(r"season\s*(\d+)", str(video.parent).lower())
