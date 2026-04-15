@@ -413,7 +413,13 @@ class StreamoraApp:
         info = ttk.Frame(self.main_frame)
         info.pack(fill="x", pady=(0, 4))
         ttk.Label(info, text=f"Utilisateur: {self.current_user['username']}", font=("Arial", 10, "bold")).pack(side="left")
-        masked_key = self.current_user["stream_key"][:3] + "*" * 9 + self.current_user["stream_key"][-3:]
+
+        raw_key = self.current_user.get("stream_key") or ""
+        if len(raw_key) >= 6:
+            masked_key = raw_key[:3] + "*" * max(0, len(raw_key) - 6) + raw_key[-3:]
+        else:
+            masked_key = raw_key or "(indisponible)"
+
         ttk.Label(info, text=f"Stream Key: {masked_key}", foreground="#991b1b").pack(side="left", padx=14)
         ttk.Button(info, text="Copier la clé", command=self.copy_stream_key).pack(side="left", padx=4)
         ttk.Button(info, text="Déconnexion", command=self.logout).pack(side="right")
