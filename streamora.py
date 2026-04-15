@@ -1615,8 +1615,8 @@ class StreamoraApp:
         ]
 
         # Header
-        header = tk.Frame(self.content_area, bg=C["bg"], padx=24, pady=(12, 0))
-        header.pack(fill="x")
+        header = tk.Frame(self.content_area, bg=C["bg"], padx=24)
+        header.pack(fill="x", pady=(12, 0))
         tk.Label(header, text="🎬 Films", font=FONT["h2"], bg=C["bg"], fg=C["text"]).pack(side="left")
         tk.Label(header, text=f"{len(filtered)} films", font=FONT["small"],
                  bg=C["bg"], fg=C["text_muted"]).pack(side="right")
@@ -1682,8 +1682,8 @@ class StreamoraApp:
             and (not search or search in s["title"].lower() or search in s["genre"].lower())
         ]
 
-        header = tk.Frame(self.content_area, bg=C["bg"], padx=24, pady=(12, 0))
-        header.pack(fill="x")
+        header = tk.Frame(self.content_area, bg=C["bg"], padx=24)
+        header.pack(fill="x", pady=(12, 0))
         tk.Label(header, text="📺 Séries", font=FONT["h2"], bg=C["bg"], fg=C["text"]).pack(side="left")
         tk.Label(header, text=f"{len(filtered)} séries", font=FONT["small"],
                  bg=C["bg"], fg=C["text_muted"]).pack(side="right")
