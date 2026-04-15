@@ -209,8 +209,8 @@ class ModernButton(tk.Canvas):
         self._fg = fg
         self._hover_bg = hover_bg
         self._font = font or FONT["btn"]
-        self._w = width
-        self._h = height
+        self._btn_w = width
+        self._btn_h = height
         self._r = radius
         self._icon = icon
         self._draw(bg)
@@ -221,7 +221,7 @@ class ModernButton(tk.Canvas):
     def _draw(self, fill_color: str):
         self.delete("all")
         r = self._r
-        w, h = self._w, self._h
+        w, h = self._btn_w, self._btn_h
         # Rounded rectangle via arcs + rectangles
         self.create_arc(0, 0, 2 * r, 2 * r, start=90, extent=90, fill=fill_color, outline=fill_color)
         self.create_arc(w - 2 * r, 0, w, 2 * r, start=0, extent=90, fill=fill_color, outline=fill_color)
