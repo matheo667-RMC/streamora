@@ -86,6 +86,9 @@ class StreamoraApp:
         self.is_muted = False
         self.saved_volume = 80
         self.seek_update_id = None
+        self.fullscreen_win = None
+        self.fs_controls_visible = True
+        self.fs_hide_id = None
 
         self.main_frame = ttk.Frame(self.root, padding=12)
         self.main_frame.pack(fill="both", expand=True)
@@ -432,12 +435,26 @@ class StreamoraApp:
 
         self.refresh_current_view()
 
-    def _ensure_vlc_player(self) -> bool:
-        if self.vlc_player is not None:
+    def _ensure_vlc_instance(self) -> bool:
+        if self.vlc_instance is not None:
             return True
         try:
             self.vlc = importlib.import_module("vlc")
             self.vlc_instance = self.vlc.Instance()
+            return True
+        except Exception:
+            messagebox.showwarning(
+                "Lecteur non disponible",
+                "Lecture intégrée indisponible (module python-vlc / VLC manquant).",
+            )
+            return False
+
+    def _ensure_vlc_player(self) -> bool:
+        if self.vlc_player is not None:
+            return True
+        if not self._ensure_vlc_instance():
+            return False
+        try:
             self.vlc_player = self.vlc_instance.media_player_new()
             handle = self.video_surface.winfo_id()
             if platform.system().lower() == "windows":
@@ -448,23 +465,120 @@ class StreamoraApp:
                 self.vlc_player.set_xwindow(handle)
             return True
         except Exception:
-            messagebox.showwarning(
-                "Lecteur non disponible",
-                "Lecture intégrée indisponible (module python-vlc / VLC manquant).",
-            )
             return False
 
+    def _bind_vlc_to_surface(self, surface: tk.Frame):
+        if self.vlc_player is None:
+            return
+        handle = surface.winfo_id()
+        if platform.system().lower() == "windows":
+            self.vlc_player.set_hwnd(handle)
+        elif platform.system().lower() == "darwin":
+            self.vlc_player.set_nsobject(handle)
+        else:
+            self.vlc_player.set_xwindow(handle)
+
     def play_in_app(self, path: Path):
-        if not self._ensure_vlc_player():
+        if not self._ensure_vlc_instance():
             open_media(path)
             return
+        self._open_fullscreen_player(path)
+
+    def _open_fullscreen_player(self, path: Path):
+        if self.fullscreen_win is not None:
+            self._close_fullscreen()
+
+        self.fullscreen_win = tk.Toplevel(self.root)
+        self.fullscreen_win.title(path.name)
+        self.fullscreen_win.configure(bg="black")
+        self.fullscreen_win.attributes("-fullscreen", True)
+        self.fullscreen_win.lift()
+        self.fullscreen_win.focus_force()
+
+        # Video surface fills the fullscreen window
+        self.fs_video_surface = tk.Frame(self.fullscreen_win, bg="black")
+        self.fs_video_surface.pack(fill="both", expand=True)
+
+        # Close button (X) top-left
+        self.fs_close_btn = tk.Button(
+            self.fullscreen_win, text="✕", font=("Arial", 18, "bold"),
+            fg="white", bg="#333333", activebackground="#dc2626",
+            activeforeground="white", bd=0, padx=10, pady=2,
+            command=self._close_fullscreen,
+        )
+        self.fs_close_btn.place(x=12, y=12)
+
+        # Bottom controls overlay
+        self.fs_controls = tk.Frame(self.fullscreen_win, bg="#1a1a1a")
+        self.fs_controls.place(relx=0, rely=1.0, relwidth=1.0, anchor="sw", height=52)
+
+        self.fs_btn_play_pause = tk.Button(
+            self.fs_controls, text="⏸", font=("Arial", 14), width=3,
+            fg="white", bg="#333", bd=0, command=self.toggle_play_pause,
+        )
+        self.fs_btn_play_pause.pack(side="left", padx=6, pady=6)
+
+        self.fs_btn_stop = tk.Button(
+            self.fs_controls, text="⏹", font=("Arial", 14), width=3,
+            fg="white", bg="#333", bd=0, command=self._close_fullscreen,
+        )
+        self.fs_btn_stop.pack(side="left", padx=4, pady=6)
+
+        self.fs_btn_mute = tk.Button(
+            self.fs_controls, text="🔊", font=("Arial", 14), width=3,
+            fg="white", bg="#333", bd=0, command=self.toggle_mute,
+        )
+        self.fs_btn_mute.pack(side="left", padx=4, pady=6)
+
+        self.fs_volume = ttk.Scale(
+            self.fs_controls, from_=0, to=100, orient="horizontal",
+            variable=self.volume_var, command=self._on_volume_change, length=90,
+        )
+        self.fs_volume.pack(side="left", padx=(4, 8), pady=6)
+
+        self.fs_elapsed = tk.Label(self.fs_controls, text="00:00", fg="white", bg="#1a1a1a", font=("Arial", 10))
+        self.fs_elapsed.pack(side="left", padx=2)
+
+        self.fs_seek = ttk.Scale(
+            self.fs_controls, from_=0, to=1000, orient="horizontal",
+            variable=self.seek_var, length=400,
+        )
+        self.fs_seek.pack(side="left", fill="x", expand=True, padx=4, pady=6)
+        self.fs_seek.bind("<ButtonRelease-1>", self._on_seek)
+
+        self.fs_duration = tk.Label(self.fs_controls, text="00:00", fg="white", bg="#1a1a1a", font=("Arial", 10))
+        self.fs_duration.pack(side="left", padx=2)
+
+        # Escape key to close
+        self.fullscreen_win.bind("<Escape>", lambda _e: self._close_fullscreen())
+        self.fullscreen_win.protocol("WM_DELETE_WINDOW", self._close_fullscreen)
+
+        # Need to wait for window to be drawn before binding VLC
+        self.fullscreen_win.update_idletasks()
+
+        # Create or rebind the VLC player to the fullscreen surface
+        if self.vlc_player is None:
+            self.vlc_player = self.vlc_instance.media_player_new()
+        self._bind_vlc_to_surface(self.fs_video_surface)
+
         media = self.vlc_instance.media_new(str(path))
         self.vlc_player.set_media(media)
         self.vlc_player.audio_set_volume(self.volume_var.get())
         self.vlc_player.play()
+
         self.player_status.config(text=f"Lecture: {path.name}")
         self.btn_play_pause.config(text="⏸")
         self._start_seek_update()
+
+    def _close_fullscreen(self):
+        if self.fullscreen_win is None:
+            return
+        self.stop_playback()
+        # Rebind VLC back to the inline surface
+        self._bind_vlc_to_surface(self.video_surface)
+        self.fullscreen_win.destroy()
+        self.fullscreen_win = None
+        self.fs_video_surface = None
 
     # ── Playback control helpers ──────────────────────────────────────
 
@@ -478,10 +592,14 @@ class StreamoraApp:
             self.vlc_player.pause()
             self.btn_play_pause.config(text="▶")
             self.player_status.config(text="En pause")
+            if self.fullscreen_win is not None:
+                self.fs_btn_play_pause.config(text="▶")
         elif state == paused_state:
             self.vlc_player.play()
             self.btn_play_pause.config(text="⏸")
             self.player_status.config(text="Lecture reprise")
+            if self.fullscreen_win is not None:
+                self.fs_btn_play_pause.config(text="⏸")
 
     def stop_playback(self):
         if self.vlc_player is None:
@@ -501,12 +619,16 @@ class StreamoraApp:
             self.vlc_player.audio_set_volume(self.saved_volume)
             self.volume_var.set(self.saved_volume)
             self.btn_mute.config(text="🔊")
+            if self.fullscreen_win is not None:
+                self.fs_btn_mute.config(text="🔊")
             self.is_muted = False
         else:
             self.saved_volume = self.vlc_player.audio_get_volume()
             self.vlc_player.audio_set_volume(0)
             self.volume_var.set(0)
             self.btn_mute.config(text="🔇")
+            if self.fullscreen_win is not None:
+                self.fs_btn_mute.config(text="🔇")
             self.is_muted = True
 
     def _on_volume_change(self, value: str):
@@ -515,9 +637,13 @@ class StreamoraApp:
             self.vlc_player.audio_set_volume(vol)
         if vol == 0:
             self.btn_mute.config(text="🔇")
+            if self.fullscreen_win is not None:
+                self.fs_btn_mute.config(text="🔇")
             self.is_muted = True
         else:
             self.btn_mute.config(text="🔊")
+            if self.fullscreen_win is not None:
+                self.fs_btn_mute.config(text="🔊")
             self.is_muted = False
             self.saved_volume = vol
 
@@ -553,6 +679,8 @@ class StreamoraApp:
                 self.btn_play_pause.config(text="▶")
                 self.seek_var.set(1000)
                 self.player_status.config(text="Lecture terminée.")
+                if self.fullscreen_win is not None:
+                    self._close_fullscreen()
                 self._stop_seek_update()
                 return
 
@@ -563,6 +691,9 @@ class StreamoraApp:
                 self.seek_var.set(pos * 1000)
             self.elapsed_label.config(text=self._format_ms(current_time))
             self.duration_label.config(text=self._format_ms(length))
+            if self.fullscreen_win is not None:
+                self.fs_elapsed.config(text=self._format_ms(current_time))
+                self.fs_duration.config(text=self._format_ms(length))
 
         self.seek_update_id = self.root.after(500, self._poll_seek)
 
