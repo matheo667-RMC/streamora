@@ -28,6 +28,7 @@ except ImportError:
 # Constants
 # ---------------------------------------------------------------------------
 DB_FILE = "iptv_app.db"
+SESSION_FILE = Path(".streamora_session.json")
 LIBRARY_ROOT = Path("streamora_library")
 BRANDING_ROOT = LIBRARY_ROOT / "branding"
 BRANDING_CONFIG = BRANDING_ROOT / "theme.json"
@@ -543,7 +544,50 @@ class StreamoraApp:
         self.main_container = tk.Frame(self.root, bg=C["bg"])
         self.main_container.pack(fill="both", expand=True)
 
-        self.show_auth_screen()
+        # Try auto-login from saved session
+        if self._try_auto_login():
+            self.show_dashboard()
+        else:
+            self.show_auth_screen()
+
+    # ------------------------------------------------------------------
+    # Session persistence
+    # ------------------------------------------------------------------
+    def _save_session(self):
+        """Save current user session to disk for auto-login."""
+        if not self.current_user:
+            return
+        try:
+            data = {"user_id": self.current_user["id"], "username": self.current_user["username"]}
+            SESSION_FILE.write_text(json.dumps(data), encoding="utf-8")
+        except Exception:
+            pass
+
+    def _try_auto_login(self) -> bool:
+        """Try to restore session from saved file."""
+        if not SESSION_FILE.exists():
+            return False
+        try:
+            data = json.loads(SESSION_FILE.read_text(encoding="utf-8"))
+            user_id = data.get("user_id")
+            if not user_id:
+                return False
+            row = self.conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+            if not row:
+                SESSION_FILE.unlink(missing_ok=True)
+                return False
+            self.current_user = dict(row)
+            self.active_view = "home"
+            if self.current_user.get("custom_icon"):
+                self._set_window_icon(self.current_user["custom_icon"])
+            return True
+        except Exception:
+            SESSION_FILE.unlink(missing_ok=True)
+            return False
+
+    def _clear_session(self):
+        """Remove saved session file."""
+        SESSION_FILE.unlink(missing_ok=True)
 
     def _set_window_icon(self, custom_path: str | None = None):
         """Set the application window icon."""
@@ -620,7 +664,8 @@ class StreamoraApp:
                 password_hash TEXT NOT NULL,
                 profile_picture TEXT DEFAULT '',
                 banner_image TEXT DEFAULT '',
-                custom_icon TEXT DEFAULT ''
+                custom_icon TEXT DEFAULT '',
+                is_admin INTEGER DEFAULT 0
             )
             """
         )
@@ -632,6 +677,12 @@ class StreamoraApp:
         for col in ["profile_picture", "banner_image", "custom_icon"]:
             if col not in existing_cols:
                 cur.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT DEFAULT ''")
+        if "is_admin" not in existing_cols:
+            cur.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+            # Make the first user admin if exists
+            first = cur.execute("SELECT id FROM users ORDER BY id LIMIT 1").fetchone()
+            if first:
+                cur.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (first[0],))
 
         # Backfill missing usernames / stream keys
         rows = cur.execute("SELECT id, username, email, stream_key FROM users").fetchall()
@@ -665,6 +716,33 @@ class StreamoraApp:
     # ------------------------------------------------------------------
     # Logo helpers
     # ------------------------------------------------------------------
+    def _draw_gradient_text(self, canvas: tk.Canvas, text: str, cx: int, cy: int, font=None):
+        """Draw text with purple→magenta→purple gradient on a Canvas."""
+        import math as _math
+        font = font or FONT["h2"]
+        chars = list(text)
+        # Measure total width
+        temp_ids = []
+        for ch in chars:
+            tid = canvas.create_text(0, 0, text=ch, font=font, fill="white")
+            temp_ids.append(tid)
+        widths = []
+        for tid in temp_ids:
+            bb = canvas.bbox(tid)
+            widths.append(bb[2] - bb[0] if bb else 10)
+            canvas.delete(tid)
+        total_w = sum(widths)
+        x = cx - total_w // 2
+        for i, ch in enumerate(chars):
+            ratio = i / max(len(chars) - 1, 1)
+            t = _math.sin(ratio * _math.pi)
+            r = int(124 + (233 - 124) * t)
+            g = int(58 + (30 - 58) * t)
+            b = int(237 + (99 - 237) * t)
+            color = f"#{r:02x}{g:02x}{b:02x}"
+            canvas.create_text(x + widths[i] // 2, cy, text=ch, font=font, fill=color)
+            x += widths[i]
+
     def _load_logo_image(self, size: int = 64) -> tk.PhotoImage | None:
         """Load the logo PNG and return a PhotoImage."""
         logo_path = BRANDING_ROOT / "logo.png"
@@ -799,9 +877,11 @@ class StreamoraApp:
             canvas_logo = self._draw_canvas_logo(card, 72)
             canvas_logo.pack(pady=(0, 6))
 
-        # App name
-        tk.Label(card, text="STREAMORA", font=FONT["h2"], bg=C["bg_card"],
-                 fg=C["accent_light"]).pack()
+        # App name — colorful gradient
+        name_canvas = tk.Canvas(card, width=340, height=40, bg=C["bg_card"],
+                                highlightthickness=0, bd=0)
+        name_canvas.pack(pady=(0, 2))
+        self._draw_gradient_text(name_canvas, "STREAMORA", 170, 20, FONT["h2"])
         tk.Label(card, text="Premium IPTV Desktop", font=FONT["small"],
                  bg=C["bg_card"], fg=C["text_muted"]).pack(pady=(0, 20))
 
@@ -978,6 +1058,9 @@ class StreamoraApp:
         if self.current_user.get("custom_icon"):
             self._set_window_icon(self.current_user["custom_icon"])
 
+        # Save session for persistent login
+        self._save_session()
+
         self.show_dashboard()
 
     def _do_register(self):
@@ -998,9 +1081,12 @@ class StreamoraApp:
             key = generate_stream_key()
 
         try:
+            # First user becomes admin
+            user_count = self.conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+            is_admin = 1 if user_count == 0 else 0
             self.conn.execute(
-                "INSERT INTO users(username, email, stream_key, salt, password_hash) VALUES (?, ?, ?, ?, ?)",
-                (username, email, key, salt, hash_password(password, salt)),
+                "INSERT INTO users(username, email, stream_key, salt, password_hash, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
+                (username, email, key, salt, hash_password(password, salt), is_admin),
             )
             self.conn.commit()
             # Create profile directory
@@ -1178,7 +1264,7 @@ class StreamoraApp:
         # Separator
         tk.Frame(sb, bg=C["border"], height=1).pack(fill="x", padx=12, pady=(0, 8))
 
-        # Avatar + username
+        # Avatar + username + role badge
         avatar_frame = tk.Frame(sb, bg=C["bg_sidebar"], padx=16, pady=8)
         avatar_frame.pack(fill="x")
 
@@ -1193,8 +1279,10 @@ class StreamoraApp:
         user_info.pack(side="left")
         tk.Label(user_info, text=self.current_user["username"], font=FONT["body_bold"],
                  bg=C["bg_sidebar"], fg=C["text"]).pack(anchor="w")
-        tk.Label(user_info, text="Premium", font=FONT["tiny"],
-                 bg=C["bg_sidebar"], fg=C["accent_light"]).pack(anchor="w")
+        role_text = "Administrateur" if self.current_user.get("is_admin") else "Premium"
+        role_color = C["magenta"] if self.current_user.get("is_admin") else C["accent_light"]
+        tk.Label(user_info, text=role_text, font=FONT["tiny"],
+                 bg=C["bg_sidebar"], fg=role_color).pack(anchor="w")
 
         tk.Frame(sb, bg=C["border"], height=1).pack(fill="x", padx=12, pady=8)
 
@@ -1206,6 +1294,8 @@ class StreamoraApp:
             ("👤", "Profil", "profile"),
             ("⚙", "Paramètres", "settings"),
         ]
+        if self.current_user.get("is_admin"):
+            nav_items.insert(5, ("🛡", "Admin", "admin"))
         for icon, text, view in nav_items:
             btn = SidebarButton(
                 sb, text=text, icon=icon,
@@ -1381,6 +1471,8 @@ class StreamoraApp:
             self._render_profile()
         elif self.active_view == "settings":
             self._render_settings()
+        elif self.active_view == "admin":
+            self._render_admin()
         else:
             self._render_home()
 
@@ -2049,6 +2141,299 @@ class StreamoraApp:
         ).pack(pady=16)
 
     # ------------------------------------------------------------------
+    # ADMIN PANEL
+    # ------------------------------------------------------------------
+    def _render_admin(self):
+        if not self.current_user or not self.current_user.get("is_admin"):
+            self._render_home()
+            return
+
+        page = tk.Frame(self.content_area, bg=C["bg"], padx=24, pady=16)
+        page.pack(fill="both", expand=True)
+
+        tk.Label(page, text="🛡 Panneau d'administration", font=FONT["h2"],
+                 bg=C["bg"], fg=C["text"]).pack(anchor="w", pady=(0, 20))
+
+        # --- Add Film ---
+        section1 = tk.Frame(page, bg=C["bg_card"], padx=20, pady=16)
+        section1.pack(fill="x", pady=(0, 12))
+
+        tk.Label(section1, text="🎬 Ajouter un film", font=FONT["h3"],
+                 bg=C["bg_card"], fg=C["text"]).pack(anchor="w", pady=(0, 4))
+        tk.Label(section1, text="Ajoute un fichier vidéo à ta bibliothèque de films",
+                 font=FONT["small"], bg=C["bg_card"], fg=C["text_secondary"]).pack(anchor="w", pady=(0, 12))
+
+        film_row = tk.Frame(section1, bg=C["bg_card"])
+        film_row.pack(fill="x")
+
+        ModernButton(
+            film_row, text="📁  Ajouter un film", command=self._admin_add_film,
+            bg=C["accent"], hover_bg=C["accent_dark"], width=220, height=40,
+            font=FONT["btn_small"],
+        ).pack(side="left", padx=(0, 8))
+
+        ModernButton(
+            film_row, text="📂  Ajouter un dossier de films", command=self._admin_add_film_folder,
+            bg=C["btn_secondary"], hover_bg=C["btn_secondary_hover"], width=260, height=40,
+            font=FONT["btn_small"],
+        ).pack(side="left")
+
+        # --- Add Series ---
+        section2 = tk.Frame(page, bg=C["bg_card"], padx=20, pady=16)
+        section2.pack(fill="x", pady=(0, 12))
+
+        tk.Label(section2, text="📺 Ajouter une série", font=FONT["h3"],
+                 bg=C["bg_card"], fg=C["text"]).pack(anchor="w", pady=(0, 4))
+        tk.Label(section2, text="Ajoute une série avec saisons et épisodes",
+                 font=FONT["small"], bg=C["bg_card"], fg=C["text_secondary"]).pack(anchor="w", pady=(0, 12))
+
+        series_row = tk.Frame(section2, bg=C["bg_card"])
+        series_row.pack(fill="x")
+
+        ModernButton(
+            series_row, text="📁  Ajouter une série", command=self._admin_add_series,
+            bg=C["magenta"], hover_bg=C["magenta_dark"], width=220, height=40,
+            font=FONT["btn_small"],
+        ).pack(side="left", padx=(0, 8))
+
+        ModernButton(
+            series_row, text="➕  Ajouter des épisodes", command=self._admin_add_episodes,
+            bg=C["btn_secondary"], hover_bg=C["btn_secondary_hover"], width=240, height=40,
+            font=FONT["btn_small"],
+        ).pack(side="left")
+
+        # --- Manage Users ---
+        section3 = tk.Frame(page, bg=C["bg_card"], padx=20, pady=16)
+        section3.pack(fill="x", pady=(0, 12))
+
+        tk.Label(section3, text="👥 Gestion des utilisateurs", font=FONT["h3"],
+                 bg=C["bg_card"], fg=C["text"]).pack(anchor="w", pady=(0, 4))
+
+        users = self.conn.execute("SELECT id, username, email, is_admin FROM users ORDER BY id").fetchall()
+        user_list = tk.Frame(section3, bg=C["bg_card"])
+        user_list.pack(fill="x", pady=(8, 0))
+
+        for u in users:
+            row = tk.Frame(user_list, bg=C["bg_surface"], padx=12, pady=6)
+            row.pack(fill="x", pady=2)
+            badge = "🛡 Admin" if u["is_admin"] else "👤 User"
+            badge_color = C["magenta"] if u["is_admin"] else C["text_secondary"]
+            tk.Label(row, text=u["username"], font=FONT["body_bold"],
+                     bg=C["bg_surface"], fg=C["text"]).pack(side="left")
+            no_email = "pas d'email"
+            tk.Label(row, text=f"  ({u['email'] or no_email})", font=FONT["small"],
+                     bg=C["bg_surface"], fg=C["text_muted"]).pack(side="left")
+            tk.Label(row, text=badge, font=FONT["small_bold"],
+                     bg=C["bg_surface"], fg=badge_color).pack(side="right")
+
+        # --- Library Stats ---
+        section4 = tk.Frame(page, bg=C["bg_card"], padx=20, pady=16)
+        section4.pack(fill="x", pady=(0, 12))
+
+        tk.Label(section4, text="📊 Statistiques", font=FONT["h3"],
+                 bg=C["bg_card"], fg=C["text"]).pack(anchor="w", pady=(0, 8))
+
+        films = self.scan_films()
+        series = self.scan_series()
+        total_episodes = sum(len(s["episodes"]) for s in series)
+        stats_text = f"Films: {len(films)}  •  Séries: {len(series)}  •  Épisodes: {total_episodes}  •  Utilisateurs: {len(users)}"
+        tk.Label(section4, text=stats_text, font=FONT["body"],
+                 bg=C["bg_card"], fg=C["accent_light"]).pack(anchor="w")
+
+    def _admin_add_film(self):
+        """Add a single film file to the library."""
+        path = filedialog.askopenfilename(
+            title="Sélectionner un film",
+            filetypes=[("Vidéos", "*.mp4 *.mkv *.avi *.mov *.webm *.m4v"), ("Tous", "*.*")],
+        )
+        if not path:
+            return
+
+        # Ask for category
+        category = simpledialog.askstring(
+            "Catégorie", "Catégorie du film (ex: Action, Comédie, Marvel):",
+            parent=self.root,
+        )
+        if not category:
+            category = "Divers"
+
+        src = Path(path)
+        dest_dir = LIBRARY_ROOT / "films" / category / src.stem
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / src.name
+
+        try:
+            shutil.copy2(str(src), str(dest))
+            messagebox.showinfo("OK", f"Film ajouté !\n\n{src.name}\n→ {category}/{src.stem}/")
+            if self.active_view == "films":
+                self.refresh_current_view()
+            elif self.active_view == "admin":
+                self._navigate_to("admin")
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Impossible d'ajouter le film:\n{e}")
+
+    def _admin_add_film_folder(self):
+        """Add all video files from a folder as films."""
+        folder = filedialog.askdirectory(title="Sélectionner un dossier de films")
+        if not folder:
+            return
+
+        category = simpledialog.askstring(
+            "Catégorie", "Catégorie pour tous les films du dossier:",
+            parent=self.root,
+        )
+        if not category:
+            category = "Divers"
+
+        src_folder = Path(folder)
+        count = 0
+        for f in src_folder.iterdir():
+            if f.is_file() and f.suffix.lower() in VIDEO_EXTS:
+                dest_dir = LIBRARY_ROOT / "films" / category / f.stem
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    shutil.copy2(str(f), str(dest_dir / f.name))
+                    count += 1
+                except Exception:
+                    pass
+
+        messagebox.showinfo("OK", f"{count} film(s) ajouté(s) dans '{category}' !")
+        if self.active_view in ("films", "admin"):
+            self.refresh_current_view()
+
+    def _admin_add_series(self):
+        """Add a series folder (with season/episode structure)."""
+        folder = filedialog.askdirectory(title="Sélectionner le dossier de la série")
+        if not folder:
+            return
+
+        series_name = simpledialog.askstring(
+            "Nom de la série", "Nom de la série:",
+            parent=self.root,
+        )
+        if not series_name:
+            series_name = Path(folder).name
+
+        category = simpledialog.askstring(
+            "Catégorie", "Catégorie (ex: Action, Anime, Comédie):",
+            parent=self.root,
+        )
+        if not category:
+            category = "Divers"
+
+        src = Path(folder)
+        dest_dir = LIBRARY_ROOT / "series" / category / series_name
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        count = 0
+        # Copy all video files, preserving subdirectory structure (seasons)
+        for f in src.rglob("*"):
+            if f.is_file() and f.suffix.lower() in VIDEO_EXTS:
+                rel = f.relative_to(src)
+                target = dest_dir / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    shutil.copy2(str(f), str(target))
+                    count += 1
+                except Exception:
+                    pass
+
+        # Copy poster if exists
+        for img_name in IMAGE_EXTS:
+            img_src = src / img_name
+            if img_src.exists():
+                shutil.copy2(str(img_src), str(dest_dir / img_name))
+                break
+
+        messagebox.showinfo("OK", f"Série '{series_name}' ajoutée avec {count} épisode(s) !")
+        if self.active_view in ("series", "admin"):
+            self.refresh_current_view()
+
+    def _admin_add_episodes(self):
+        """Add episodes to an existing series."""
+        # List existing series
+        series_root = LIBRARY_ROOT / "series"
+        series_dirs = []
+        if series_root.exists():
+            for cat_dir in series_root.iterdir():
+                if cat_dir.is_dir():
+                    for s_dir in cat_dir.iterdir():
+                        if s_dir.is_dir():
+                            series_dirs.append(f"{cat_dir.name}/{s_dir.name}")
+
+        if not series_dirs:
+            messagebox.showinfo("Info", "Aucune série trouvée. Ajoute d'abord une série.")
+            return
+
+        # Pick series dialog
+        pick_win = tk.Toplevel(self.root)
+        pick_win.title("Choisir une série")
+        pick_win.geometry("500x400")
+        pick_win.configure(bg=C["bg_card"])
+        pick_win.transient(self.root)
+        pick_win.grab_set()
+
+        tk.Label(pick_win, text="Choisir la série", font=FONT["h3"],
+                 bg=C["bg_card"], fg=C["text"]).pack(pady=(16, 8))
+
+        listbox = tk.Listbox(
+            pick_win, font=FONT["body"], bg=C["bg_input"], fg=C["text"],
+            selectbackground=C["accent"], selectforeground="white",
+            bd=0, highlightthickness=1, highlightbackground=C["border"],
+        )
+        listbox.pack(fill="both", expand=True, padx=20, pady=8)
+        for sd in sorted(series_dirs):
+            listbox.insert("end", sd)
+
+        result = {"value": None}
+
+        def on_select():
+            sel = listbox.curselection()
+            if sel:
+                result["value"] = listbox.get(sel[0])
+            pick_win.destroy()
+
+        ModernButton(
+            pick_win, text="Sélectionner", command=on_select,
+            bg=C["accent"], hover_bg=C["accent_dark"], width=180, height=38,
+        ).pack(pady=(0, 16))
+
+        pick_win.wait_window()
+
+        if not result["value"]:
+            return
+
+        # Select episode files
+        files = filedialog.askopenfilenames(
+            title="Sélectionner les épisodes",
+            filetypes=[("Vidéos", "*.mp4 *.mkv *.avi *.mov *.webm *.m4v"), ("Tous", "*.*")],
+        )
+        if not files:
+            return
+
+        season = simpledialog.askinteger(
+            "Saison", "Numéro de la saison:", parent=self.root, minvalue=1,
+        )
+        if not season:
+            season = 1
+
+        dest_dir = LIBRARY_ROOT / "series" / result["value"] / f"Season {season}"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        count = 0
+        for f in files:
+            src = Path(f)
+            try:
+                shutil.copy2(str(src), str(dest_dir / src.name))
+                count += 1
+            except Exception:
+                pass
+
+        messagebox.showinfo("OK", f"{count} épisode(s) ajouté(s) à la saison {season} !")
+        if self.active_view in ("series", "admin"):
+            self.refresh_current_view()
+
+    # ------------------------------------------------------------------
     # VLC Player
     # ------------------------------------------------------------------
     def _ensure_vlc_instance(self) -> bool:
@@ -2308,6 +2693,7 @@ class StreamoraApp:
         messagebox.showinfo("Copié", "Stream Key copiée !")
 
     def logout(self):
+        self._clear_session()
         self.current_user = None
         self.active_view = "home"
         self.search_var.set("")
