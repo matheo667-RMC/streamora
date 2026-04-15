@@ -554,25 +554,36 @@ class StreamoraApp:
     # Session persistence
     # ------------------------------------------------------------------
     def _save_session(self):
-        """Save current user session to disk for auto-login."""
+        """Save current user session to disk for auto-login using a crypto token."""
         if not self.current_user:
             return
         try:
-            data = {"user_id": self.current_user["id"], "username": self.current_user["username"]}
+            token = secrets.token_hex(32)
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            self.conn.execute(
+                "UPDATE users SET session_token = ? WHERE id = ?",
+                (token_hash, self.current_user["id"]),
+            )
+            self.conn.commit()
+            data = {"session_token": token}
             SESSION_FILE.write_text(json.dumps(data), encoding="utf-8")
         except Exception:
             pass
 
     def _try_auto_login(self) -> bool:
-        """Try to restore session from saved file."""
+        """Try to restore session from saved file using verified token."""
         if not SESSION_FILE.exists():
             return False
         try:
             data = json.loads(SESSION_FILE.read_text(encoding="utf-8"))
-            user_id = data.get("user_id")
-            if not user_id:
+            token = data.get("session_token")
+            if not token:
+                SESSION_FILE.unlink(missing_ok=True)
                 return False
-            row = self.conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            row = self.conn.execute(
+                "SELECT * FROM users WHERE session_token = ?", (token_hash,)
+            ).fetchone()
             if not row:
                 SESSION_FILE.unlink(missing_ok=True)
                 return False
@@ -586,7 +597,16 @@ class StreamoraApp:
             return False
 
     def _clear_session(self):
-        """Remove saved session file."""
+        """Remove saved session file and invalidate token in DB."""
+        if self.current_user:
+            try:
+                self.conn.execute(
+                    "UPDATE users SET session_token = NULL WHERE id = ?",
+                    (self.current_user["id"],),
+                )
+                self.conn.commit()
+            except Exception:
+                pass
         SESSION_FILE.unlink(missing_ok=True)
 
     def _set_window_icon(self, custom_path: str | None = None):
@@ -677,6 +697,8 @@ class StreamoraApp:
         for col in ["profile_picture", "banner_image", "custom_icon"]:
             if col not in existing_cols:
                 cur.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT DEFAULT ''")
+        if "session_token" not in existing_cols:
+            cur.execute("ALTER TABLE users ADD COLUMN session_token TEXT DEFAULT NULL")
         if "is_admin" not in existing_cols:
             cur.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
             # Make the first user admin if exists
@@ -2350,7 +2372,10 @@ class StreamoraApp:
         for img_name in IMAGE_EXTS:
             img_src = src / img_name
             if img_src.exists():
-                shutil.copy2(str(img_src), str(dest_dir / img_name))
+                try:
+                    shutil.copy2(str(img_src), str(dest_dir / img_name))
+                except Exception:
+                    pass
                 break
 
         messagebox.showinfo("OK", f"Série '{series_name}' ajoutée avec {count} épisode(s) !")
