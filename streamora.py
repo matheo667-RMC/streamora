@@ -619,6 +619,7 @@ class StreamoraApp:
         self.vlc = None
         self.vlc_instance = None
         self.vlc_player = None
+        self._playback_active = False
         self.is_muted = False
         self.saved_volume = 80
         self.seek_update_id = None
@@ -1358,11 +1359,12 @@ class StreamoraApp:
         self.content_area = tk.Frame(right, bg=C["bg"])
         self.content_area.pack(fill="both", expand=True)
 
-        # Bottom player bar
+        # Bottom player bar (hidden until a video is playing)
         self.player_bar = tk.Frame(wrapper, bg=C["player_bg"], height=72)
-        self.player_bar.pack(fill="x", side="bottom")
         self.player_bar.pack_propagate(False)
         self._build_player_bar()
+        if getattr(self, '_playback_active', False):
+            self.player_bar.pack(fill="x", side="bottom")
 
         # Keep sidebar ref for backward compat
         self.sidebar = self.cat_sidebar
@@ -2863,6 +2865,10 @@ class StreamoraApp:
         self.vlc_player.set_media(media)
         self.vlc_player.audio_set_volume(self.volume_var.get())
         self.vlc_player.play()
+        self._playback_active = True
+        # Show the player bar now that playback started
+        if self.player_bar.winfo_manager() == "":
+            self.player_bar.pack(fill="x", side="bottom")
 
         self.player_status.config(text=f"▶ {path.name}")
         self.btn_play_pause.config(text="⏸")
@@ -2907,6 +2913,10 @@ class StreamoraApp:
         self.duration_label.config(text="00:00")
         self.player_status.config(text="Aucune lecture")
         self._stop_seek_update()
+        self._playback_active = False
+        # Hide the player bar when no video is playing
+        if self.player_bar.winfo_manager() != "":
+            self.player_bar.pack_forget()
 
     def toggle_mute(self):
         if self.vlc_player is None:
