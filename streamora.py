@@ -87,6 +87,12 @@ C = {
     "cat_item_active": "#141428",
     "badge_bg": "#1e3a1e",
     "badge_text": "#4caf50",
+    "home_bg": "#0f0f1a",
+    "home_card": "#1a1a2e",
+    "home_card_hover": "#222240",
+    "home_card_border": "#2a2a44",
+    "icon_btn_bg": "#2a2a44",
+    "icon_btn_hover": "#3a3a55",
 }
 
 FONT_FAMILY = "Helvetica"
@@ -1323,11 +1329,14 @@ class StreamoraApp:
         wrapper = tk.Frame(self.main_container, bg=C["bg"])
         wrapper.pack(fill="both", expand=True)
 
-        # Top navigation bar (tabs + search + logo)
-        self.topnav = tk.Frame(wrapper, bg=C["topnav_bg"], height=52)
+        # Top navigation bar — different style for home vs inner pages
+        self.topnav = tk.Frame(wrapper, bg=C["topnav_bg"], height=80 if self.active_view == "home" else 52)
         self.topnav.pack(fill="x")
         self.topnav.pack_propagate(False)
-        self._build_topnav()
+        if self.active_view == "home":
+            self._build_home_topbar()
+        else:
+            self._build_topnav()
 
         # Middle area: category sidebar | content
         middle = tk.Frame(wrapper, bg=C["bg"])
@@ -1364,6 +1373,70 @@ class StreamoraApp:
     def _build_sidebar(self):
         """Legacy — no longer used in new layout. Category sidebar built in refresh_current_view."""
         pass
+
+    def _build_home_topbar(self):
+        """Build the home-specific top bar: logo (left) | search + icon buttons (right)."""
+        nav = self.topnav
+        nav.configure(bg=C["home_bg"])
+
+        # Logo (left side) — large
+        logo_photo = self._load_logo_image(64)
+        if logo_photo:
+            self.home_logo = logo_photo
+            tk.Label(nav, image=logo_photo, bg=C["home_bg"]).pack(
+                side="left", padx=(20, 0), pady=8,
+            )
+
+        # Right side: search bar + icon buttons
+        right_frame = tk.Frame(nav, bg=C["home_bg"])
+        right_frame.pack(side="right", padx=20, fill="y")
+
+        # Search button/bar
+        search_frame = tk.Frame(right_frame, bg=C["icon_btn_bg"],
+                                highlightbackground=C["border"], highlightthickness=1)
+        search_frame.pack(side="left", padx=4, pady=20)
+        tk.Label(search_frame, text="🔍", font=FONT["body"], bg=C["icon_btn_bg"],
+                 fg=C["text_muted"], padx=6).pack(side="left")
+        search_entry = tk.Entry(
+            search_frame, textvariable=self.search_var, font=FONT["body"],
+            bg=C["icon_btn_bg"], fg=C["text"], insertbackground=C["accent_light"],
+            relief="flat", bd=3, width=14,
+        )
+        search_entry.pack(side="left", padx=(0, 6))
+        search_entry.insert(0, "Rechercher")
+        search_entry.configure(fg=C["text_muted"])
+
+        def _on_search_focus(_e):
+            if search_entry.get() == "Rechercher":
+                search_entry.delete(0, "end")
+                search_entry.configure(fg=C["text"])
+
+        def _on_search_blur(_e):
+            if not search_entry.get():
+                search_entry.insert(0, "Rechercher")
+                search_entry.configure(fg=C["text_muted"])
+
+        search_entry.bind("<FocusIn>", _on_search_focus)
+        search_entry.bind("<FocusOut>", _on_search_blur)
+
+        # Icon buttons: bell, refresh, settings, profile
+        icon_buttons = [
+            ("🔔", None),                                # Notifications
+            ("🔄", lambda: self.refresh_current_view()),  # Refresh
+            ("⚙", lambda: self._navigate_to("settings")), # Settings
+            ("👤", lambda: self._navigate_to("profile")),  # Profile
+        ]
+        for icon_text, cmd in icon_buttons:
+            btn = tk.Label(
+                right_frame, text=icon_text, font=FONT["icon"],
+                bg=C["icon_btn_bg"], fg=C["text_secondary"],
+                padx=10, pady=6, cursor="hand2",
+            )
+            btn.pack(side="left", padx=3, pady=20)
+            if cmd:
+                btn.bind("<ButtonRelease-1>", lambda _e, c=cmd: c())
+            btn.bind("<Enter>", lambda _e, b=btn: b.configure(bg=C["icon_btn_hover"], fg="white"))
+            btn.bind("<Leave>", lambda _e, b=btn: b.configure(bg=C["icon_btn_bg"], fg=C["text_secondary"]))
 
     def _build_topnav(self):
         """Build the top navigation bar: back button | tabs | search | user menu | logo."""
@@ -1628,11 +1701,8 @@ class StreamoraApp:
         self.active_view = view
         self.search_var.set("")
         self.category_var.set("Tout")
-        # Rebuild top nav to update active tab state
-        for child in self.topnav.winfo_children():
-            child.destroy()
-        self._build_topnav()
-        self.refresh_current_view()
+        # Home has a different top bar layout, so rebuild entire dashboard
+        self.show_dashboard()
 
     def refresh_current_view(self):
         for child in self.content_area.winfo_children():
@@ -1665,65 +1735,94 @@ class StreamoraApp:
     # HOME
     # ------------------------------------------------------------------
     def _render_home(self):
-        page = tk.Frame(self.content_area, bg=C["bg"])
-        page.pack(fill="both", expand=True, padx=24, pady=16)
+        page = tk.Frame(self.content_area, bg=C["home_bg"])
+        page.pack(fill="both", expand=True)
 
-        # Welcome header
-        tk.Label(page, text="Bienvenue sur Streamora ✨", font=FONT["h1"],
-                 bg=C["bg"], fg=C["text"]).pack(anchor="w", pady=(0, 4))
-        tk.Label(page, text="Choisis ce que tu veux regarder", font=FONT["body"],
-                 bg=C["bg"], fg=C["text_secondary"]).pack(anchor="w", pady=(0, 24))
+        # ── 3 Big Cards: Télévision en direct, Films, Série ──
+        cards_frame = tk.Frame(page, bg=C["home_bg"])
+        cards_frame.pack(fill="both", expand=True, padx=40, pady=(40, 16))
 
-        # Big buttons for Films / Series
-        cards_frame = tk.Frame(page, bg=C["bg"])
-        cards_frame.pack(fill="x")
+        big_cards = [
+            ("📡", "Télévision en direct", None),
+            ("🎬", "Films", "films"),
+            ("🎞", "Série", "series"),
+        ]
+        for icon_text, label_text, nav_target in big_cards:
+            card_bg = C["home_card"]
+            card = tk.Frame(
+                cards_frame, bg=card_bg, cursor="hand2",
+                highlightbackground=C["home_card_border"], highlightthickness=1,
+            )
+            card.pack(side="left", fill="both", expand=True, padx=8)
 
-        # Films card
-        film_card = tk.Frame(cards_frame, bg=C["accent_dark"], cursor="hand2", padx=30, pady=30)
-        film_card.pack(side="left", fill="both", expand=True, padx=(0, 8))
-        tk.Label(film_card, text="🎬", font=(FONT_FAMILY, 48), bg=C["accent_dark"],
-                 fg="white").pack()
-        tk.Label(film_card, text="FILMS", font=FONT["h2"], bg=C["accent_dark"],
-                 fg="white").pack(pady=(8, 4))
-        tk.Label(film_card, text="Regarde tes films en plein écran", font=FONT["small"],
-                 bg=C["accent_dark"], fg=C["accent_light"]).pack()
+            # Icon area (centered, large)
+            icon_lbl = tk.Label(
+                card, text=icon_text, font=(FONT_FAMILY, 52),
+                bg=card_bg, fg="white",
+            )
+            icon_lbl.pack(expand=True, pady=(40, 8))
 
-        for w in [film_card] + film_card.winfo_children():
-            w.bind("<ButtonRelease-1>", lambda _: self._navigate_to("films"))
-            w.bind("<Enter>", lambda _, f=film_card: f.configure(bg=C["accent"]) or self._recolor_children(f, C["accent"]))
-            w.bind("<Leave>", lambda _, f=film_card: f.configure(bg=C["accent_dark"]) or self._recolor_children(f, C["accent_dark"]))
+            # Label
+            text_lbl = tk.Label(
+                card, text=label_text, font=FONT["h2"],
+                bg=card_bg, fg="white",
+            )
+            text_lbl.pack(pady=(0, 40))
 
-        # Series card
-        series_card = tk.Frame(cards_frame, bg=C["magenta_dark"], cursor="hand2", padx=30, pady=30)
-        series_card.pack(side="left", fill="both", expand=True, padx=(8, 0))
-        tk.Label(series_card, text="📺", font=(FONT_FAMILY, 48), bg=C["magenta_dark"],
-                 fg="white").pack()
-        tk.Label(series_card, text="SÉRIES", font=FONT["h2"], bg=C["magenta_dark"],
-                 fg="white").pack(pady=(8, 4))
-        tk.Label(series_card, text="Regarde tes séries préférées", font=FONT["small"],
-                 bg=C["magenta_dark"], fg="#ff8a80").pack()
+            # Hover + click bindings
+            def _bind_card(w, c=card, bg=card_bg, target=nav_target):
+                w.bind("<Enter>", lambda _e: [
+                    c.configure(bg=C["home_card_hover"]),
+                    self._recolor_children(c, C["home_card_hover"]),
+                ])
+                w.bind("<Leave>", lambda _e: [
+                    c.configure(bg=bg),
+                    self._recolor_children(c, bg),
+                ])
+                if target:
+                    w.bind("<ButtonRelease-1>", lambda _e: self._navigate_to(target))
 
-        for w in [series_card] + series_card.winfo_children():
-            w.bind("<ButtonRelease-1>", lambda _: self._navigate_to("series"))
-            w.bind("<Enter>", lambda _, f=series_card: f.configure(bg=C["magenta"]) or self._recolor_children(f, C["magenta"]))
-            w.bind("<Leave>", lambda _, f=series_card: f.configure(bg=C["magenta_dark"]) or self._recolor_children(f, C["magenta_dark"]))
+            _bind_card(card)
+            _bind_card(icon_lbl)
+            _bind_card(text_lbl)
 
-        # Quick stats
-        stats_frame = tk.Frame(page, bg=C["bg"])
-        stats_frame.pack(fill="x", pady=(24, 0))
+        # ── 3 Bottom Buttons: Listes de lecture, Rattraper, Favoris ──
+        bottom_frame = tk.Frame(page, bg=C["home_bg"])
+        bottom_frame.pack(fill="x", padx=40, pady=(0, 30))
 
-        films = self.scan_films()
-        series = self.scan_series()
+        bottom_buttons = [
+            ("📋", "Listes de lecture"),
+            ("⏪", "Rattraper"),
+            ("⭐", "Favoris"),
+        ]
+        for icon_text, label_text in bottom_buttons:
+            btn_bg = C["home_card"]
+            btn = tk.Frame(
+                bottom_frame, bg=btn_bg, cursor="hand2",
+                highlightbackground=C["home_card_border"], highlightthickness=1,
+            )
+            btn.pack(side="left", fill="x", expand=True, padx=8, ipady=12)
 
-        for label, value, color in [
-            ("Films", str(len(films)), C["accent"]),
-            ("Séries", str(len(series)), C["magenta"]),
-            ("Épisodes", str(sum(len(s["episodes"]) for s in series)), C["success"]),
-        ]:
-            stat = tk.Frame(stats_frame, bg=C["bg_card"], padx=20, pady=12)
-            stat.pack(side="left", fill="x", expand=True, padx=4)
-            tk.Label(stat, text=value, font=FONT["h2"], bg=C["bg_card"], fg=color).pack()
-            tk.Label(stat, text=label, font=FONT["small"], bg=C["bg_card"], fg=C["text_secondary"]).pack()
+            icon_lbl = tk.Label(
+                btn, text=icon_text, font=FONT["icon"],
+                bg=btn_bg, fg=C["text_secondary"], padx=12,
+            )
+            icon_lbl.pack(side="left", pady=8)
+            text_lbl = tk.Label(
+                btn, text=label_text, font=FONT["body_bold"],
+                bg=btn_bg, fg="white",
+            )
+            text_lbl.pack(side="left", pady=8)
+
+            for w in [btn, icon_lbl, text_lbl]:
+                w.bind("<Enter>", lambda _e, b=btn: [
+                    b.configure(bg=C["home_card_hover"]),
+                    self._recolor_children(b, C["home_card_hover"]),
+                ])
+                w.bind("<Leave>", lambda _e, b=btn, bg=btn_bg: [
+                    b.configure(bg=bg),
+                    self._recolor_children(b, bg),
+                ])
 
     def _recolor_children(self, widget, color):
         for child in widget.winfo_children():
