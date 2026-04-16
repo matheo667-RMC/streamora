@@ -38,13 +38,14 @@ VIDEO_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v"}
 IMAGE_EXTS = ["poster.png", "cover.png", "poster.gif", "cover.gif"]
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9_.-]{3,24}$")
 DEFAULT_FILM_CATEGORIES = [
-    "Toutes", "Action", "Aventure", "Comédie", "Marvel",
-    "Horreur", "Animation", "Sci-Fi",
+    "Tout", "Action", "Aventure", "Comédie", "Marvel",
+    "Horreur", "Animation", "Sci-Fi", "Divers",
 ]
 DEFAULT_SERIES_CATEGORIES = [
-    "Toutes", "Action", "Aventure", "Comédie", "Marvel",
-    "Anime", "Documentaire", "Sci-Fi",
+    "Tout", "Action", "Aventure", "Comédie", "Marvel",
+    "Anime", "Documentaire", "Sci-Fi", "Divers",
 ]
+SORT_OPTIONS = ["Trier par ajouté", "Trier par nom", "Trier par catégorie"]
 
 # ---------------------------------------------------------------------------
 # Color Theme — Dark IPTV
@@ -78,6 +79,20 @@ C = {
     "tiktok": "#ff0050",
     "scrollbar": "#2a2a3e",
     "scrollbar_hover": "#3a3a50",
+    "topnav_bg": "#121220",
+    "topnav_tab": "#1e1e3a",
+    "topnav_tab_active": "#7c3aed",
+    "cat_sidebar_bg": "#0c0c18",
+    "cat_item_hover": "#1a1a30",
+    "cat_item_active": "#141428",
+    "badge_bg": "#1e3a1e",
+    "badge_text": "#4caf50",
+    "home_bg": "#0f0f1a",
+    "home_card": "#1a1a2e",
+    "home_card_hover": "#222240",
+    "home_card_border": "#2a2a44",
+    "icon_btn_bg": "#2a2a44",
+    "icon_btn_hover": "#3a3a55",
 }
 
 FONT_FAMILY = "Helvetica"
@@ -368,6 +383,85 @@ class SidebarButton(tk.Frame):
             self._command()
 
 
+class NavTab(tk.Frame):
+    """Top navigation tab button (like Smarters IPTV Pro)."""
+
+    def __init__(self, parent, text: str, active: bool = False, command=None, **kwargs):
+        bg = C["topnav_tab_active"] if active else C["topnav_tab"]
+        super().__init__(parent, bg=bg, cursor="hand2", padx=16, pady=8, **kwargs)
+        self._command = command
+        self._active = active
+        self._normal_bg = bg
+
+        self._label = tk.Label(
+            self, text=text, font=FONT["body_bold"],
+            bg=bg, fg="white" if active else C["text_secondary"],
+        )
+        self._label.pack()
+
+        for w in [self, self._label]:
+            w.bind("<Enter>", self._on_enter)
+            w.bind("<Leave>", self._on_leave)
+            w.bind("<ButtonRelease-1>", self._on_click)
+
+    def _on_enter(self, _e):
+        if not self._active:
+            self.configure(bg=C["bg_hover"])
+            self._label.configure(bg=C["bg_hover"])
+
+    def _on_leave(self, _e):
+        if not self._active:
+            self.configure(bg=self._normal_bg)
+            self._label.configure(bg=self._normal_bg)
+
+    def _on_click(self, _e):
+        if self._command:
+            self._command()
+
+
+class CategoryItem(tk.Frame):
+    """Category sidebar item with count badge."""
+
+    def __init__(self, parent, text: str, count: int = 0, active: bool = False,
+                 command=None, **kwargs):
+        bg = C["cat_item_active"] if active else C["cat_sidebar_bg"]
+        super().__init__(parent, bg=bg, cursor="hand2", padx=12, pady=8, **kwargs)
+        self._command = command
+        self._active = active
+        self._normal_bg = bg
+
+        self._text_lbl = tk.Label(
+            self, text=text, font=FONT["body_bold"] if active else FONT["body"],
+            bg=bg, fg="white" if active else C["text_secondary"], anchor="w",
+        )
+        self._text_lbl.pack(side="left", fill="x", expand=True)
+
+        self._count_lbl = tk.Label(
+            self, text=str(count), font=FONT["small_bold"],
+            bg=bg, fg=C["accent_light"] if active else C["text_muted"],
+        )
+        self._count_lbl.pack(side="right")
+
+        for w in [self, self._text_lbl, self._count_lbl]:
+            w.bind("<Enter>", self._on_enter)
+            w.bind("<Leave>", self._on_leave)
+            w.bind("<ButtonRelease-1>", self._on_click)
+
+    def _on_enter(self, _e):
+        if not self._active:
+            for w in [self, self._text_lbl, self._count_lbl]:
+                w.configure(bg=C["cat_item_hover"])
+
+    def _on_leave(self, _e):
+        if not self._active:
+            for w in [self, self._text_lbl, self._count_lbl]:
+                w.configure(bg=self._normal_bg)
+
+    def _on_click(self, _e):
+        if self._command:
+            self._command()
+
+
 class DarkScrollableGrid(tk.Frame):
     """Scrollable grid with dark theme."""
 
@@ -513,7 +607,7 @@ class StreamoraApp:
         self.current_user: dict | None = None
         self.active_view = "home"
         self.search_var = tk.StringVar()
-        self.category_var = tk.StringVar(value="Toutes")
+        self.category_var = tk.StringVar(value="Tout")
         self.poster_cache: dict[str, tk.PhotoImage] = {}
         self.pil_cache: dict[str, ImageTk.PhotoImage] = {} if HAS_PIL else {}
         self.brand_logo: tk.PhotoImage | None = None
@@ -525,6 +619,7 @@ class StreamoraApp:
         self.vlc = None
         self.vlc_instance = None
         self.vlc_player = None
+        self._playback_active = False
         self.is_muted = False
         self.saved_volume = 80
         self.seek_update_id = None
@@ -1231,166 +1326,305 @@ class StreamoraApp:
         self._clear()
         self.root.configure(bg=C["bg"])
 
-        # Main layout: sidebar | content | player bottom
+        # Main layout: top nav | (category sidebar | content) | player bottom
         wrapper = tk.Frame(self.main_container, bg=C["bg"])
         wrapper.pack(fill="both", expand=True)
 
-        # Sidebar
-        self.sidebar = tk.Frame(wrapper, bg=C["bg_sidebar"], width=self.SIDEBAR_WIDTH)
-        self.sidebar.pack(side="left", fill="y")
-        self.sidebar.pack_propagate(False)
+        # Top navigation bar — different style for home vs inner pages
+        self.topnav = tk.Frame(wrapper, bg=C["topnav_bg"], height=80 if self.active_view == "home" else 52)
+        self.topnav.pack(fill="x")
+        self.topnav.pack_propagate(False)
+        if self.active_view == "home":
+            self._build_home_topbar()
+        else:
+            self._build_topnav()
 
-        self._build_sidebar()
+        # Middle area: category sidebar | content
+        middle = tk.Frame(wrapper, bg=C["bg"])
+        middle.pack(fill="both", expand=True)
 
-        # Right side (content + player)
-        right = tk.Frame(wrapper, bg=C["bg"])
+        # Category sidebar (left) — only visible on films/series views
+        self.cat_sidebar = tk.Frame(middle, bg=C["cat_sidebar_bg"], width=260)
+        self.cat_sidebar.pack_propagate(False)
+
+        # Content area (right)
+        right = tk.Frame(middle, bg=C["bg"])
         right.pack(side="left", fill="both", expand=True)
 
-        # Top bar (search + user info)
-        topbar = tk.Frame(right, bg=C["bg_card"], height=56)
-        topbar.pack(fill="x")
-        topbar.pack_propagate(False)
-        self._build_topbar(topbar)
+        # Sort/filter bar above content
+        self.sort_bar = tk.Frame(right, bg=C["bg_card"], height=40)
+        self.sort_bar.pack_propagate(False)
 
         # Content area
         self.content_area = tk.Frame(right, bg=C["bg"])
         self.content_area.pack(fill="both", expand=True)
 
-        # Bottom player bar
-        self.player_bar = tk.Frame(right, bg=C["player_bg"], height=72)
-        self.player_bar.pack(fill="x", side="bottom")
+        # Bottom player bar (hidden until a video is playing)
+        self.player_bar = tk.Frame(wrapper, bg=C["player_bg"], height=72)
         self.player_bar.pack_propagate(False)
         self._build_player_bar()
+        if getattr(self, '_playback_active', False):
+            self.player_bar.pack(fill="x", side="bottom")
+
+        # Keep sidebar ref for backward compat
+        self.sidebar = self.cat_sidebar
 
         # Show content based on active view
         self.refresh_current_view()
 
     def _build_sidebar(self):
-        sb = self.sidebar
+        """Legacy — no longer used in new layout. Category sidebar built in refresh_current_view."""
+        pass
 
-        # Logo area
-        logo_frame = tk.Frame(sb, bg=C["bg_sidebar"], pady=16)
-        logo_frame.pack(fill="x")
+    def _build_home_topbar(self):
+        """Build the home-specific top bar: logo (left) | search + icon buttons (right)."""
+        nav = self.topnav
+        nav.configure(bg=C["home_bg"])
 
-        logo_row = tk.Frame(logo_frame, bg=C["bg_sidebar"])
-        logo_row.pack()
-        logo_photo = self._load_logo_image(40)
+        # Logo (left side) — large
+        logo_photo = self._load_logo_image(64)
         if logo_photo:
-            self.logo_photo = logo_photo
-            tk.Label(logo_row, image=logo_photo, bg=C["bg_sidebar"]).pack(side="left", padx=(16, 8))
-        else:
-            canvas = self._draw_canvas_logo(logo_row, 40)
-            canvas.pack(side="left", padx=(16, 8))
+            self.home_logo = logo_photo
+            tk.Label(nav, image=logo_photo, bg=C["home_bg"]).pack(
+                side="left", padx=(20, 0), pady=8,
+            )
 
-        tk.Label(logo_row, text="STREAMORA", font=FONT["logo_text"],
-                 bg=C["bg_sidebar"], fg=C["accent_light"]).pack(side="left")
+        # Right side: search bar + icon buttons
+        right_frame = tk.Frame(nav, bg=C["home_bg"])
+        right_frame.pack(side="right", padx=20, fill="y")
 
-        # Separator
-        tk.Frame(sb, bg=C["border"], height=1).pack(fill="x", padx=12, pady=(0, 8))
+        # Search button/bar
+        search_frame = tk.Frame(right_frame, bg=C["icon_btn_bg"],
+                                highlightbackground=C["border"], highlightthickness=1)
+        search_frame.pack(side="left", padx=4, pady=20)
+        tk.Label(search_frame, text="🔍", font=FONT["body"], bg=C["icon_btn_bg"],
+                 fg=C["text_muted"], padx=6).pack(side="left")
+        search_entry = tk.Entry(
+            search_frame, textvariable=self.search_var, font=FONT["body"],
+            bg=C["icon_btn_bg"], fg=C["text"], insertbackground=C["accent_light"],
+            relief="flat", bd=3, width=14,
+        )
+        search_entry.pack(side="left", padx=(0, 6))
+        search_entry.insert(0, "Rechercher")
+        search_entry.configure(fg=C["text_muted"])
 
-        # Avatar + username + role badge
-        avatar_frame = tk.Frame(sb, bg=C["bg_sidebar"], padx=16, pady=8)
-        avatar_frame.pack(fill="x")
+        def _on_search_focus(_e):
+            if search_entry.get() == "Rechercher":
+                search_entry.delete(0, "end")
+                search_entry.configure(fg=C["text"])
 
-        avatar_photo = self._load_avatar(40)
-        if avatar_photo:
-            self.avatar_photo = avatar_photo
-            tk.Label(avatar_frame, image=avatar_photo, bg=C["bg_sidebar"]).pack(side="left", padx=(0, 10))
-        else:
-            self._default_avatar_canvas(avatar_frame, 40).pack(side="left", padx=(0, 10))
+        def _on_search_blur(_e):
+            if not search_entry.get():
+                search_entry.insert(0, "Rechercher")
+                search_entry.configure(fg=C["text_muted"])
 
-        user_info = tk.Frame(avatar_frame, bg=C["bg_sidebar"])
-        user_info.pack(side="left")
-        tk.Label(user_info, text=self.current_user["username"], font=FONT["body_bold"],
-                 bg=C["bg_sidebar"], fg=C["text"]).pack(anchor="w")
-        role_text = "Administrateur" if self.current_user.get("is_admin") else "Premium"
-        role_color = C["magenta"] if self.current_user.get("is_admin") else C["accent_light"]
-        tk.Label(user_info, text=role_text, font=FONT["tiny"],
-                 bg=C["bg_sidebar"], fg=role_color).pack(anchor="w")
+        search_entry.bind("<FocusIn>", _on_search_focus)
+        search_entry.bind("<FocusOut>", _on_search_blur)
 
-        tk.Frame(sb, bg=C["border"], height=1).pack(fill="x", padx=12, pady=8)
-
-        # Navigation
-        nav_items = [
-            ("🏠", "Accueil", "home"),
-            ("🎬", "Films", "films"),
-            ("📺", "Séries", "series"),
-            ("👤", "Profil", "profile"),
-            ("⚙", "Paramètres", "settings"),
+        # Icon buttons: bell, refresh, settings, profile
+        icon_buttons = [
+            ("🔔", None),                                # Notifications
+            ("🔄", lambda: self.refresh_current_view()),  # Refresh
+            ("⚙", lambda: self._navigate_to("settings")), # Settings
+            ("👤", lambda: self._navigate_to("profile")),  # Profile
         ]
-        if self.current_user.get("is_admin"):
-            nav_items.insert(5, ("🛡", "Admin", "admin"))
-        for icon, text, view in nav_items:
-            btn = SidebarButton(
-                sb, text=text, icon=icon,
+        for icon_text, cmd in icon_buttons:
+            btn = tk.Label(
+                right_frame, text=icon_text, font=FONT["icon"],
+                bg=C["icon_btn_bg"], fg=C["text_secondary"],
+                padx=10, pady=6, cursor="hand2",
+            )
+            btn.pack(side="left", padx=3, pady=20)
+            if cmd:
+                btn.bind("<ButtonRelease-1>", lambda _e, c=cmd: c())
+            btn.bind("<Enter>", lambda _e, b=btn: b.configure(bg=C["icon_btn_hover"], fg="white"))
+            btn.bind("<Leave>", lambda _e, b=btn: b.configure(bg=C["icon_btn_bg"], fg=C["text_secondary"]))
+
+    def _build_topnav(self):
+        """Build the top navigation bar: back button | tabs | search | user menu | logo."""
+        nav = self.topnav
+
+        # Back button (← arrow)
+        back_btn = tk.Label(
+            nav, text="←", font=(FONT_FAMILY, 18), bg=C["topnav_bg"],
+            fg=C["text_secondary"], padx=12, cursor="hand2",
+        )
+        back_btn.pack(side="left", fill="y")
+        back_btn.bind("<ButtonRelease-1>", lambda _e: self._navigate_to("home"))
+        back_btn.bind("<Enter>", lambda _e: back_btn.configure(fg="white"))
+        back_btn.bind("<Leave>", lambda _e: back_btn.configure(fg=C["text_secondary"]))
+
+        # Navigation tabs
+        tab_frame = tk.Frame(nav, bg=C["topnav_bg"])
+        tab_frame.pack(side="left", padx=8, fill="y")
+
+        main_tabs = [
+            ("Accueil", "home"),
+            ("Films", "films"),
+            ("Série", "series"),
+        ]
+        for text, view in main_tabs:
+            tab = NavTab(
+                tab_frame, text=text,
                 active=(self.active_view == view),
                 command=lambda v=view: self._navigate_to(v),
             )
-            btn.pack(fill="x")
+            tab.pack(side="left", padx=2, pady=6)
 
-        # Spacer
-        tk.Frame(sb, bg=C["bg_sidebar"]).pack(fill="both", expand=True)
+        # Extra tabs for profile, settings, admin
+        extra_tabs = [
+            ("👤 Profil", "profile"),
+            ("⚙ Paramètres", "settings"),
+        ]
+        if self.current_user.get("is_admin"):
+            extra_tabs.append(("🛡 Admin", "admin"))
 
-        # Stream key copy
-        key_frame = tk.Frame(sb, bg=C["bg_sidebar"], padx=12, pady=4)
-        key_frame.pack(fill="x")
-        tk.Label(key_frame, text="🔑 Stream Key", font=FONT["tiny"],
-                 bg=C["bg_sidebar"], fg=C["text_muted"]).pack(anchor="w")
-        key_text = self.current_user["stream_key"][:8] + "..."
-        key_row = tk.Frame(key_frame, bg=C["bg_sidebar"])
-        key_row.pack(fill="x")
-        tk.Label(key_row, text=key_text, font=FONT["tiny"],
-                 bg=C["bg_sidebar"], fg=C["text_secondary"]).pack(side="left")
-        tk.Button(
-            key_row, text="Copier", font=FONT["tiny"], bg=C["btn_secondary"],
-            fg=C["text_muted"], bd=0, padx=6, pady=1, cursor="hand2",
-            command=self._copy_stream_key,
-        ).pack(side="right")
+        for text, view in extra_tabs:
+            tab = NavTab(
+                tab_frame, text=text,
+                active=(self.active_view == view),
+                command=lambda v=view: self._navigate_to(v),
+            )
+            tab.pack(side="left", padx=2, pady=6)
 
-        tk.Frame(sb, bg=C["border"], height=1).pack(fill="x", padx=12, pady=8)
-
-        # Logout
-        SidebarButton(
-            sb, text="Déconnexion", icon="🚪",
-            command=self.logout,
-        ).pack(fill="x", pady=(0, 8))
-
-    def _build_topbar(self, parent):
-        # Search bar
-        search_frame = tk.Frame(parent, bg=C["bg_card"], padx=16)
-        search_frame.pack(side="left", fill="both", expand=True)
+        # Search bar (center)
+        search_frame = tk.Frame(nav, bg=C["topnav_bg"])
+        search_frame.pack(side="left", fill="x", expand=True, padx=16)
 
         search_inner = tk.Frame(search_frame, bg=C["bg_input"],
                                 highlightbackground=C["border"], highlightthickness=1)
-        search_inner.pack(side="left", fill="x", expand=True, pady=10)
+        search_inner.pack(fill="x", pady=10)
 
         tk.Label(search_inner, text="🔍", font=FONT["body"], bg=C["bg_input"],
                  fg=C["text_muted"], padx=8).pack(side="left")
         search_entry = tk.Entry(
             search_inner, textvariable=self.search_var, font=FONT["body"],
             bg=C["bg_input"], fg=C["text"], insertbackground=C["accent_light"],
-            relief="flat", bd=4, width=30,
+            relief="flat", bd=4,
         )
         search_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
         search_entry.bind("<KeyRelease>", lambda _e: self.refresh_current_view())
 
-        # Category filter (only show for films/series)
-        self.category_frame = tk.Frame(parent, bg=C["bg_card"], padx=8)
-        self.category_frame.pack(side="left")
-        tk.Label(self.category_frame, text="Catégorie", font=FONT["small"],
-                 bg=C["bg_card"], fg=C["text_secondary"]).pack(side="left", padx=(0, 4))
-        self.category_combo = ttk.Combobox(
-            self.category_frame, textvariable=self.category_var,
-            values=["Toutes"], width=14, state="readonly",
-        )
-        self.category_combo.pack(side="left")
-        self.category_combo.bind("<<ComboboxSelected>>", lambda _e: self.refresh_current_view())
+        # User info + logout (right side)
+        user_frame = tk.Frame(nav, bg=C["topnav_bg"], padx=8)
+        user_frame.pack(side="right", fill="y")
 
-        # User greeting
-        greeting = tk.Frame(parent, bg=C["bg_card"], padx=16)
-        greeting.pack(side="right")
-        tk.Label(greeting, text=f"Salut, {self.current_user['username']} !",
-                 font=FONT["small_bold"], bg=C["bg_card"], fg=C["text_secondary"]).pack()
+        username_lbl = tk.Label(
+            user_frame, text=self.current_user["username"],
+            font=FONT["small_bold"], bg=C["topnav_bg"], fg=C["text_secondary"],
+        )
+        username_lbl.pack(side="left", padx=4)
+
+        logout_btn = tk.Label(
+            user_frame, text="🚪", font=FONT["icon"], bg=C["topnav_bg"],
+            fg=C["text_muted"], cursor="hand2",
+        )
+        logout_btn.pack(side="left", padx=4)
+        logout_btn.bind("<ButtonRelease-1>", lambda _e: self.logout())
+        logout_btn.bind("<Enter>", lambda _e: logout_btn.configure(fg=C["error"]))
+        logout_btn.bind("<Leave>", lambda _e: logout_btn.configure(fg=C["text_muted"]))
+
+        # Logo (far right)
+        logo_photo = self._load_logo_image(36)
+        if logo_photo:
+            self.topnav_logo = logo_photo
+            tk.Label(nav, image=logo_photo, bg=C["topnav_bg"]).pack(side="right", padx=(4, 12))
+
+    def _build_category_sidebar(self, items: list[dict], selected: str):
+        """Build the left category sidebar with items and counts."""
+        sb = self.cat_sidebar
+        for child in sb.winfo_children():
+            child.destroy()
+
+        # Search categories
+        search_frame = tk.Frame(sb, bg=C["cat_sidebar_bg"], padx=8, pady=8)
+        search_frame.pack(fill="x")
+
+        cat_search = tk.Entry(
+            search_frame, font=FONT["small"], bg=C["bg_input"], fg=C["text"],
+            insertbackground=C["accent_light"], relief="flat", bd=4,
+        )
+        cat_search.insert(0, "Catégorie de recherche")
+        cat_search.configure(fg=C["text_muted"])
+
+        def _on_cat_focus_in(_e):
+            if cat_search.get() == "Catégorie de recherche":
+                cat_search.delete(0, "end")
+                cat_search.configure(fg=C["text"])
+
+        def _on_cat_focus_out(_e):
+            if not cat_search.get():
+                cat_search.insert(0, "Catégorie de recherche")
+                cat_search.configure(fg=C["text_muted"])
+
+        cat_search.bind("<FocusIn>", _on_cat_focus_in)
+        cat_search.bind("<FocusOut>", _on_cat_focus_out)
+
+        search_icon = tk.Label(search_frame, text="🔍", font=FONT["small"],
+                               bg=C["cat_sidebar_bg"], fg=C["text_muted"])
+        search_icon.pack(side="left", padx=(4, 0))
+        cat_search.pack(side="left", fill="x", expand=True, padx=4)
+
+        # Scrollable category list
+        cat_canvas = tk.Canvas(sb, bg=C["cat_sidebar_bg"], highlightthickness=0, bd=0)
+        cat_scroll = tk.Scrollbar(sb, orient="vertical", command=cat_canvas.yview,
+                                   bg=C["scrollbar"], troughcolor=C["cat_sidebar_bg"],
+                                   highlightthickness=0, bd=0, width=8)
+        cat_inner = tk.Frame(cat_canvas, bg=C["cat_sidebar_bg"])
+        cat_inner.bind("<Configure>", lambda _e: cat_canvas.configure(scrollregion=cat_canvas.bbox("all")))
+        cat_canvas.create_window((0, 0), window=cat_inner, anchor="nw")
+        cat_canvas.configure(yscrollcommand=cat_scroll.set)
+        cat_canvas.pack(side="left", fill="both", expand=True)
+        cat_scroll.pack(side="right", fill="y")
+
+        # Bind mousewheel
+        cat_canvas.bind("<Button-4>", lambda _e: cat_canvas.yview_scroll(-3, "units"))
+        cat_canvas.bind("<Button-5>", lambda _e: cat_canvas.yview_scroll(3, "units"))
+        cat_canvas.bind("<Configure>", lambda e: cat_canvas.itemconfig(
+            cat_canvas.find_all()[0] if cat_canvas.find_all() else 0, width=e.width))
+
+        for item in items:
+            name = item["name"]
+            count = item["count"]
+            cat_item = CategoryItem(
+                cat_inner, text=name, count=count,
+                active=(name == selected),
+                command=lambda n=name: self._on_category_select(n),
+            )
+            cat_item.pack(fill="x")
+
+    def _on_category_select(self, category: str):
+        """Handle category selection from the sidebar."""
+        self.category_var.set(category)
+        self.refresh_current_view()
+
+    def _build_sort_bar(self, total_count: int):
+        """Build the sort/filter bar above the content grid."""
+        bar = self.sort_bar
+        for child in bar.winfo_children():
+            child.destroy()
+
+        # Sort dropdown
+        sort_frame = tk.Frame(bar, bg=C["bg_card"])
+        sort_frame.pack(side="left", padx=12, fill="y")
+
+        self.sort_var = tk.StringVar(value=SORT_OPTIONS[0])
+        sort_label = tk.Label(sort_frame, textvariable=self.sort_var,
+                              font=FONT["small"], bg=C["bg_card"], fg=C["text_secondary"])
+        sort_label.pack(side="left", pady=8)
+
+        sort_icon = tk.Label(sort_frame, text="☰", font=FONT["body"],
+                             bg=C["bg_card"], fg=C["text_muted"])
+        sort_icon.pack(side="left", padx=4)
+
+        # Total count (right side)
+        count_label = tk.Label(bar, text=f"All({total_count})",
+                               font=FONT["small_bold"], bg=C["bg_card"], fg=C["text_secondary"])
+        count_label.pack(side="right", padx=12, pady=8)
+
+    def _build_topbar(self, parent):
+        """Legacy — replaced by _build_topnav."""
+        pass
 
     def _build_player_bar(self):
         """Build the bottom player controls bar."""
@@ -1468,22 +1702,21 @@ class StreamoraApp:
     def _navigate_to(self, view: str):
         self.active_view = view
         self.search_var.set("")
-        self.category_var.set("Toutes")
-        # Rebuild sidebar to update active state
-        for child in self.sidebar.winfo_children():
-            child.destroy()
-        self._build_sidebar()
-        self.refresh_current_view()
+        self.category_var.set("Tout")
+        # Home has a different top bar layout, so rebuild entire dashboard
+        self.show_dashboard()
 
     def refresh_current_view(self):
         for child in self.content_area.winfo_children():
             child.destroy()
 
-        # Show/hide category filter
+        # Show/hide category sidebar and sort bar for films/series
         if self.active_view in ("films", "series"):
-            self.category_frame.pack(side="left")
+            self.cat_sidebar.pack(side="left", fill="y", before=self.content_area.master)
+            self.sort_bar.pack(fill="x", before=self.content_area)
         else:
-            self.category_frame.pack_forget()
+            self.cat_sidebar.pack_forget()
+            self.sort_bar.pack_forget()
 
         if self.active_view == "home":
             self._render_home()
@@ -1504,65 +1737,94 @@ class StreamoraApp:
     # HOME
     # ------------------------------------------------------------------
     def _render_home(self):
-        page = tk.Frame(self.content_area, bg=C["bg"])
-        page.pack(fill="both", expand=True, padx=24, pady=16)
+        page = tk.Frame(self.content_area, bg=C["home_bg"])
+        page.pack(fill="both", expand=True)
 
-        # Welcome header
-        tk.Label(page, text="Bienvenue sur Streamora ✨", font=FONT["h1"],
-                 bg=C["bg"], fg=C["text"]).pack(anchor="w", pady=(0, 4))
-        tk.Label(page, text="Choisis ce que tu veux regarder", font=FONT["body"],
-                 bg=C["bg"], fg=C["text_secondary"]).pack(anchor="w", pady=(0, 24))
+        # ── 3 Big Cards: Télévision en direct, Films, Série ──
+        cards_frame = tk.Frame(page, bg=C["home_bg"])
+        cards_frame.pack(fill="both", expand=True, padx=40, pady=(40, 16))
 
-        # Big buttons for Films / Series
-        cards_frame = tk.Frame(page, bg=C["bg"])
-        cards_frame.pack(fill="x")
+        big_cards = [
+            ("📡", "Télévision en direct", None),
+            ("🎬", "Films", "films"),
+            ("🎞", "Série", "series"),
+        ]
+        for icon_text, label_text, nav_target in big_cards:
+            card_bg = C["home_card"]
+            card = tk.Frame(
+                cards_frame, bg=card_bg, cursor="hand2",
+                highlightbackground=C["home_card_border"], highlightthickness=1,
+            )
+            card.pack(side="left", fill="both", expand=True, padx=8)
 
-        # Films card
-        film_card = tk.Frame(cards_frame, bg=C["accent_dark"], cursor="hand2", padx=30, pady=30)
-        film_card.pack(side="left", fill="both", expand=True, padx=(0, 8))
-        tk.Label(film_card, text="🎬", font=(FONT_FAMILY, 48), bg=C["accent_dark"],
-                 fg="white").pack()
-        tk.Label(film_card, text="FILMS", font=FONT["h2"], bg=C["accent_dark"],
-                 fg="white").pack(pady=(8, 4))
-        tk.Label(film_card, text="Regarde tes films en plein écran", font=FONT["small"],
-                 bg=C["accent_dark"], fg=C["accent_light"]).pack()
+            # Icon area (centered, large)
+            icon_lbl = tk.Label(
+                card, text=icon_text, font=(FONT_FAMILY, 52),
+                bg=card_bg, fg="white",
+            )
+            icon_lbl.pack(expand=True, pady=(40, 8))
 
-        for w in [film_card] + film_card.winfo_children():
-            w.bind("<ButtonRelease-1>", lambda _: self._navigate_to("films"))
-            w.bind("<Enter>", lambda _, f=film_card: f.configure(bg=C["accent"]) or self._recolor_children(f, C["accent"]))
-            w.bind("<Leave>", lambda _, f=film_card: f.configure(bg=C["accent_dark"]) or self._recolor_children(f, C["accent_dark"]))
+            # Label
+            text_lbl = tk.Label(
+                card, text=label_text, font=FONT["h2"],
+                bg=card_bg, fg="white",
+            )
+            text_lbl.pack(pady=(0, 40))
 
-        # Series card
-        series_card = tk.Frame(cards_frame, bg=C["magenta_dark"], cursor="hand2", padx=30, pady=30)
-        series_card.pack(side="left", fill="both", expand=True, padx=(8, 0))
-        tk.Label(series_card, text="📺", font=(FONT_FAMILY, 48), bg=C["magenta_dark"],
-                 fg="white").pack()
-        tk.Label(series_card, text="SÉRIES", font=FONT["h2"], bg=C["magenta_dark"],
-                 fg="white").pack(pady=(8, 4))
-        tk.Label(series_card, text="Regarde tes séries préférées", font=FONT["small"],
-                 bg=C["magenta_dark"], fg="#ff8a80").pack()
+            # Hover + click bindings
+            def _bind_card(w, c=card, bg=card_bg, target=nav_target):
+                w.bind("<Enter>", lambda _e: [
+                    c.configure(bg=C["home_card_hover"]),
+                    self._recolor_children(c, C["home_card_hover"]),
+                ])
+                w.bind("<Leave>", lambda _e: [
+                    c.configure(bg=bg),
+                    self._recolor_children(c, bg),
+                ])
+                if target:
+                    w.bind("<ButtonRelease-1>", lambda _e: self._navigate_to(target))
 
-        for w in [series_card] + series_card.winfo_children():
-            w.bind("<ButtonRelease-1>", lambda _: self._navigate_to("series"))
-            w.bind("<Enter>", lambda _, f=series_card: f.configure(bg=C["magenta"]) or self._recolor_children(f, C["magenta"]))
-            w.bind("<Leave>", lambda _, f=series_card: f.configure(bg=C["magenta_dark"]) or self._recolor_children(f, C["magenta_dark"]))
+            _bind_card(card)
+            _bind_card(icon_lbl)
+            _bind_card(text_lbl)
 
-        # Quick stats
-        stats_frame = tk.Frame(page, bg=C["bg"])
-        stats_frame.pack(fill="x", pady=(24, 0))
+        # ── 3 Bottom Buttons: Listes de lecture, Rattraper, Favoris ──
+        bottom_frame = tk.Frame(page, bg=C["home_bg"])
+        bottom_frame.pack(fill="x", padx=40, pady=(0, 30))
 
-        films = self.scan_films()
-        series = self.scan_series()
+        bottom_buttons = [
+            ("📋", "Listes de lecture"),
+            ("⏪", "Rattraper"),
+            ("⭐", "Favoris"),
+        ]
+        for icon_text, label_text in bottom_buttons:
+            btn_bg = C["home_card"]
+            btn = tk.Frame(
+                bottom_frame, bg=btn_bg, cursor="hand2",
+                highlightbackground=C["home_card_border"], highlightthickness=1,
+            )
+            btn.pack(side="left", fill="x", expand=True, padx=8, ipady=12)
 
-        for label, value, color in [
-            ("Films", str(len(films)), C["accent"]),
-            ("Séries", str(len(series)), C["magenta"]),
-            ("Épisodes", str(sum(len(s["episodes"]) for s in series)), C["success"]),
-        ]:
-            stat = tk.Frame(stats_frame, bg=C["bg_card"], padx=20, pady=12)
-            stat.pack(side="left", fill="x", expand=True, padx=4)
-            tk.Label(stat, text=value, font=FONT["h2"], bg=C["bg_card"], fg=color).pack()
-            tk.Label(stat, text=label, font=FONT["small"], bg=C["bg_card"], fg=C["text_secondary"]).pack()
+            icon_lbl = tk.Label(
+                btn, text=icon_text, font=FONT["icon"],
+                bg=btn_bg, fg=C["text_secondary"], padx=12,
+            )
+            icon_lbl.pack(side="left", pady=8)
+            text_lbl = tk.Label(
+                btn, text=label_text, font=FONT["body_bold"],
+                bg=btn_bg, fg="white",
+            )
+            text_lbl.pack(side="left", pady=8)
+
+            for w in [btn, icon_lbl, text_lbl]:
+                w.bind("<Enter>", lambda _e, b=btn: [
+                    b.configure(bg=C["home_card_hover"]),
+                    self._recolor_children(b, C["home_card_hover"]),
+                ])
+                w.bind("<Leave>", lambda _e, b=btn, bg=btn_bg: [
+                    b.configure(bg=bg),
+                    self._recolor_children(b, bg),
+                ])
 
     def _recolor_children(self, widget, color):
         for child in widget.winfo_children():
@@ -1716,43 +1978,49 @@ class StreamoraApp:
 
     def _render_film_grid(self):
         films = self.scan_films()
-        cats = sorted({f["category"] for f in films})
-        values = list(dict.fromkeys(DEFAULT_FILM_CATEGORIES + cats))
-        self.category_combo.configure(values=values, state="readonly")
-        if self.category_var.get() not in values:
-            self.category_var.set("Toutes")
+
+        # Build category counts for sidebar
+        cat_counts: dict[str, int] = {}
+        for f in films:
+            cat_counts[f["category"]] = cat_counts.get(f["category"], 0) + 1
+        cat_items = [{"name": "Tout", "count": len(films)}]
+        for cat in sorted(cat_counts.keys()):
+            cat_items.append({"name": cat, "count": cat_counts[cat]})
+
+        selected = self.category_var.get()
+        if selected not in [c["name"] for c in cat_items]:
+            self.category_var.set("Tout")
+            selected = "Tout"
+
+        self._build_category_sidebar(cat_items, selected)
 
         search = self.search_var.get().strip().lower()
-        selected = self.category_var.get()
         filtered = [
             f for f in films
-            if (selected == "Toutes" or f["category"] == selected)
+            if (selected == "Tout" or f["category"] == selected)
             and (not search or search in f["title"].lower() or search in f["genre"].lower())
         ]
 
-        # Header
-        header = tk.Frame(self.content_area, bg=C["bg"], padx=24)
-        header.pack(fill="x", pady=(12, 0))
-        tk.Label(header, text="🎬 Films", font=FONT["h2"], bg=C["bg"], fg=C["text"]).pack(side="left")
-        tk.Label(header, text=f"{len(filtered)} films", font=FONT["small"],
-                 bg=C["bg"], fg=C["text_muted"]).pack(side="right")
+        # Sort bar
+        self._build_sort_bar(len(filtered))
 
+        # Grid
         grid = DarkScrollableGrid(self.content_area)
-        grid.pack(fill="both", expand=True, padx=16, pady=8)
+        grid.pack(fill="both", expand=True, padx=8, pady=4)
 
         if not filtered:
             tk.Label(grid.inner, text="Aucun film trouvé.", font=FONT["body"],
                      bg=C["bg"], fg=C["text_muted"]).grid(row=0, column=0, padx=20, pady=20)
             return
 
-        cols = 5
+        cols = 6
         for i, film in enumerate(filtered):
             poster = self._create_poster_image(film["poster"])
             card = MediaCard(
                 grid.inner, title=film["title"], subtitle=film["genre"],
                 image=poster, command=lambda x=film: self._show_film_actions(x),
             )
-            card.grid(row=i // cols, column=i % cols, padx=6, pady=6, sticky="n")
+            card.grid(row=i // cols, column=i % cols, padx=4, pady=4, sticky="n")
 
     def _show_film_actions(self, film: dict):
         win = tk.Toplevel(self.root)
@@ -1784,35 +2052,42 @@ class StreamoraApp:
 
     def _render_series_grid(self):
         series = self.scan_series()
-        cats = sorted({s["category"] for s in series})
-        values = list(dict.fromkeys(DEFAULT_SERIES_CATEGORIES + cats))
-        self.category_combo.configure(values=values, state="readonly")
-        if self.category_var.get() not in values:
-            self.category_var.set("Toutes")
+
+        # Build category counts for sidebar
+        cat_counts: dict[str, int] = {}
+        for s in series:
+            cat_counts[s["category"]] = cat_counts.get(s["category"], 0) + 1
+        cat_items = [{"name": "Tout", "count": len(series)}]
+        for cat in sorted(cat_counts.keys()):
+            cat_items.append({"name": cat, "count": cat_counts[cat]})
+
+        selected = self.category_var.get()
+        if selected not in [c["name"] for c in cat_items]:
+            self.category_var.set("Tout")
+            selected = "Tout"
+
+        self._build_category_sidebar(cat_items, selected)
 
         search = self.search_var.get().strip().lower()
-        selected = self.category_var.get()
         filtered = [
             s for s in series
-            if (selected == "Toutes" or s["category"] == selected)
+            if (selected == "Tout" or s["category"] == selected)
             and (not search or search in s["title"].lower() or search in s["genre"].lower())
         ]
 
-        header = tk.Frame(self.content_area, bg=C["bg"], padx=24)
-        header.pack(fill="x", pady=(12, 0))
-        tk.Label(header, text="📺 Séries", font=FONT["h2"], bg=C["bg"], fg=C["text"]).pack(side="left")
-        tk.Label(header, text=f"{len(filtered)} séries", font=FONT["small"],
-                 bg=C["bg"], fg=C["text_muted"]).pack(side="right")
+        # Sort bar
+        self._build_sort_bar(len(filtered))
 
+        # Grid
         grid = DarkScrollableGrid(self.content_area)
-        grid.pack(fill="both", expand=True, padx=16, pady=8)
+        grid.pack(fill="both", expand=True, padx=8, pady=4)
 
         if not filtered:
             tk.Label(grid.inner, text="Aucune série trouvée.", font=FONT["body"],
                      bg=C["bg"], fg=C["text_muted"]).grid(row=0, column=0, padx=20, pady=20)
             return
 
-        cols = 5
+        cols = 6
         for i, item in enumerate(filtered):
             poster = self._create_poster_image(item["poster"])
             subtitle = f"{item['genre']} • {len(item['episodes'])} épisodes"
@@ -1820,7 +2095,7 @@ class StreamoraApp:
                 grid.inner, title=item["title"], subtitle=subtitle,
                 image=poster, command=lambda x=item: self._show_series_episodes(x),
             )
-            card.grid(row=i // cols, column=i % cols, padx=6, pady=6, sticky="n")
+            card.grid(row=i // cols, column=i % cols, padx=4, pady=4, sticky="n")
 
     def _show_series_episodes(self, series_item: dict):
         win = tk.Toplevel(self.root)
@@ -2590,6 +2865,10 @@ class StreamoraApp:
         self.vlc_player.set_media(media)
         self.vlc_player.audio_set_volume(self.volume_var.get())
         self.vlc_player.play()
+        self._playback_active = True
+        # Show the player bar now that playback started
+        if self.player_bar.winfo_manager() == "":
+            self.player_bar.pack(fill="x", side="bottom")
 
         self.player_status.config(text=f"▶ {path.name}")
         self.btn_play_pause.config(text="⏸")
@@ -2634,6 +2913,10 @@ class StreamoraApp:
         self.duration_label.config(text="00:00")
         self.player_status.config(text="Aucune lecture")
         self._stop_seek_update()
+        self._playback_active = False
+        # Hide the player bar when no video is playing
+        if self.player_bar.winfo_manager() != "":
+            self.player_bar.pack_forget()
 
     def toggle_mute(self):
         if self.vlc_player is None:
@@ -2732,7 +3015,7 @@ class StreamoraApp:
         self.current_user = None
         self.active_view = "home"
         self.search_var.set("")
-        self.category_var.set("Toutes")
+        self.category_var.set("Tout")
         self.poster_cache.clear()
         if HAS_PIL:
             self.pil_cache.clear()
