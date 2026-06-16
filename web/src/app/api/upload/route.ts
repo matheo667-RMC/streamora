@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { put } from "@vercel/blob";
+
+export const runtime = "edge";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -13,22 +14,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const ext = file.name.split(".").pop() || "png";
+  const ext = file.name.split(".").pop() || "bin";
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const uploadDir = join(process.cwd(), "public", "uploads");
 
-  try {
-    await mkdir(uploadDir, { recursive: true });
-  } catch {
-    // directory exists
-  }
+  const blob = await put(filename, file, {
+    access: "public",
+    addRandomSuffix: false,
+  });
 
-  const filepath = join(uploadDir, filename);
-  await writeFile(filepath, buffer);
-
-  const url = `/uploads/${filename}`;
-  return NextResponse.json({ url });
+  return NextResponse.json({ url: blob.url });
 }

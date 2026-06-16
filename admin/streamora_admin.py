@@ -2,6 +2,7 @@
 """
 Streamora Admin - Desktop application for managing films and series.
 Connects directly to the Neon PostgreSQL database.
+Uploads files to the Streamora website via API.
 """
 
 import os
@@ -9,8 +10,10 @@ import sys
 import json
 import uuid
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 from datetime import datetime
+import threading
+import requests
 
 try:
     import customtkinter as ctk
@@ -29,14 +32,20 @@ except ImportError:
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
+VIDEO_EXTENSIONS = (".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v", ".flv", ".wmv")
+IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp")
+
+
 def generate_cuid():
     return "cl" + uuid.uuid4().hex[:23]
+
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
     return {}
+
 
 def save_config(config):
     with open(CONFIG_FILE, "w") as f:
@@ -70,9 +79,48 @@ class DatabaseConnection:
         return cur.fetchone()
 
 
+class FileUploader:
+    """Uploads files to the Streamora website API."""
+
+    def __init__(self, site_url):
+        self.site_url = site_url.rstrip("/")
+
+    def upload(self, filepath, callback=None):
+        """Upload a file and return the URL. Callback receives progress messages."""
+        filename = os.path.basename(filepath)
+        filesize = os.path.getsize(filepath)
+
+        if callback:
+            callback(f"Upload de {filename} ({filesize // (1024*1024)} MB)...")
+
+        try:
+            with open(filepath, "rb") as f:
+                files = {"file": (filename, f)}
+                resp = requests.post(
+                    f"{self.site_url}/api/upload",
+                    files=files,
+                    timeout=600,
+                )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                if callback:
+                    callback(f"Upload terminé : {filename}")
+                return data.get("url", "")
+            else:
+                if callback:
+                    callback(f"Erreur upload : {resp.status_code}")
+                return ""
+        except Exception as e:
+            if callback:
+                callback(f"Erreur : {str(e)}")
+            return ""
+
+
 class StreamoraAdmin:
     def __init__(self):
         self.db = None
+        self.uploader = None
         self.config = load_config()
 
         if USE_CTK:
@@ -81,11 +129,8 @@ class StreamoraAdmin:
             self.root = tk.Tk()
 
         self.root.title("Streamora Admin")
-        self.root.geometry("1100x700")
+        self.root.geometry("1100x750")
         self.root.minsize(900, 600)
-
-        if not USE_CTK:
-            self.root.configure(bg="#1a1a2e")
 
         self.setup_connection_screen()
         self.root.mainloop()
@@ -103,11 +148,18 @@ class StreamoraAdmin:
 
             ctk.CTkLabel(frame, text="URL de connexion PostgreSQL :").pack(anchor="w", padx=20)
             self.conn_entry = ctk.CTkEntry(frame, width=500, placeholder_text="postgresql://user:pass@host/db?sslmode=require")
-            self.conn_entry.pack(padx=20, pady=(5, 15))
+            self.conn_entry.pack(padx=20, pady=(5, 10))
 
-            saved = self.config.get("database_url", "")
-            if saved:
-                self.conn_entry.insert(0, saved)
+            ctk.CTkLabel(frame, text="URL du site Streamora :").pack(anchor="w", padx=20)
+            self.site_entry = ctk.CTkEntry(frame, width=500, placeholder_text="https://streamora-eosin.vercel.app")
+            self.site_entry.pack(padx=20, pady=(5, 15))
+
+            saved_db = self.config.get("database_url", "")
+            saved_site = self.config.get("site_url", "")
+            if saved_db:
+                self.conn_entry.insert(0, saved_db)
+            if saved_site:
+                self.site_entry.insert(0, saved_site)
 
             ctk.CTkButton(frame, text="Se connecter", command=self.connect_db,
                          fg_color="#9333ea", hover_color="#7e22ce", width=200).pack(pady=(5, 20))
@@ -116,27 +168,42 @@ class StreamoraAdmin:
             frame.place(relx=0.5, rely=0.5, anchor="center")
 
             tk.Label(frame, text="🎬 Streamora Admin", font=("", 24, "bold"), bg="#1a1a2e", fg="white").pack(pady=(20, 5))
+
             tk.Label(frame, text="URL PostgreSQL :", bg="#1a1a2e", fg="white").pack(anchor="w", padx=20)
             self.conn_entry = tk.Entry(frame, width=60, bg="#2d2d44", fg="white", insertbackground="white")
-            self.conn_entry.pack(padx=20, pady=(5, 15))
+            self.conn_entry.pack(padx=20, pady=(5, 10))
 
-            saved = self.config.get("database_url", "")
-            if saved:
-                self.conn_entry.insert(0, saved)
+            tk.Label(frame, text="URL du site :", bg="#1a1a2e", fg="white").pack(anchor="w", padx=20)
+            self.site_entry = tk.Entry(frame, width=60, bg="#2d2d44", fg="white", insertbackground="white")
+            self.site_entry.pack(padx=20, pady=(5, 15))
+
+            saved_db = self.config.get("database_url", "")
+            saved_site = self.config.get("site_url", "")
+            if saved_db:
+                self.conn_entry.insert(0, saved_db)
+            if saved_site:
+                self.site_entry.insert(0, saved_site)
 
             tk.Button(frame, text="Se connecter", command=self.connect_db,
                      bg="#9333ea", fg="white", relief="flat", padx=20, pady=5).pack(pady=(5, 20))
 
     def connect_db(self):
         conn_str = self.conn_entry.get().strip()
+        site_url = self.site_entry.get().strip()
+
         if not conn_str:
-            messagebox.showerror("Erreur", "Veuillez entrer l'URL de connexion")
+            messagebox.showerror("Erreur", "Veuillez entrer l'URL de connexion PostgreSQL")
+            return
+        if not site_url:
+            messagebox.showerror("Erreur", "Veuillez entrer l'URL de votre site Streamora")
             return
 
         try:
             self.db = DatabaseConnection(conn_str)
             self.db.connect()
+            self.uploader = FileUploader(site_url)
             self.config["database_url"] = conn_str
+            self.config["site_url"] = site_url
             save_config(self.config)
             self.setup_main_screen()
         except Exception as e:
@@ -156,6 +223,8 @@ class StreamoraAdmin:
             self.content_frame = ctk.CTkFrame(self.root)
             self.content_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
+            self.status_var = tk.StringVar(value="Prêt")
+
             buttons = [
                 ("📊 Dashboard", self.show_dashboard),
                 ("🎬 Films", self.show_films),
@@ -168,9 +237,14 @@ class StreamoraAdmin:
                              fg_color="transparent", hover_color="#333355",
                              anchor="w", font=("", 14)).pack(fill="x", padx=10, pady=2)
 
+            # Status bar at bottom of sidebar
+            self.status_label = ctk.CTkLabel(sidebar, textvariable=self.status_var,
+                                            font=("", 11), text_color="gray")
+            self.status_label.pack(side="bottom", padx=10, pady=(0, 5))
+
             ctk.CTkButton(sidebar, text="🚪 Déconnexion", command=self.setup_connection_screen,
                          fg_color="transparent", hover_color="#553333",
-                         anchor="w", font=("", 13), text_color="gray").pack(side="bottom", fill="x", padx=10, pady=10)
+                         anchor="w", font=("", 13), text_color="gray").pack(side="bottom", fill="x", padx=10, pady=5)
         else:
             sidebar = tk.Frame(self.root, bg="#16213e", width=200)
             sidebar.pack(side="left", fill="y")
@@ -180,6 +254,8 @@ class StreamoraAdmin:
 
             self.content_frame = tk.Frame(self.root, bg="#1a1a2e")
             self.content_frame.pack(side="right", fill="both", expand=True)
+
+            self.status_var = tk.StringVar(value="Prêt")
 
             buttons = [
                 ("📊 Dashboard", self.show_dashboard),
@@ -195,9 +271,23 @@ class StreamoraAdmin:
 
         self.show_dashboard()
 
+    def set_status(self, msg):
+        self.status_var.set(msg)
+        self.root.update_idletasks()
+
     def clear_content(self):
         for w in self.content_frame.winfo_children():
             w.destroy()
+
+    def upload_file(self, filepath, callback=None):
+        """Upload a file in the background and call callback with the URL."""
+        def _do():
+            url = self.uploader.upload(filepath, callback=lambda m: self.root.after(0, self.set_status, m))
+            if callback:
+                self.root.after(0, callback, url)
+        threading.Thread(target=_do, daemon=True).start()
+
+    # ─── DASHBOARD ───
 
     def show_dashboard(self):
         self.clear_content()
@@ -232,7 +322,6 @@ class StreamoraAdmin:
                 ctk.CTkLabel(card, text=str(value), font=("", 32, "bold"), text_color=color).pack(pady=(15, 5))
                 ctk.CTkLabel(card, text=label, font=("", 12), text_color="gray").pack(pady=(0, 15))
 
-            # Recent downloads
             try:
                 recent = self.db.fetchall("""
                     SELECT d."createdAt", f.title
@@ -253,6 +342,8 @@ class StreamoraAdmin:
             for key, val in stats.items():
                 tk.Label(self.content_frame, text=f"{key}: {val}", bg="#1a1a2e", fg="white", font=("", 14)).pack(anchor="w", padx=20)
 
+    # ─── FILMS ───
+
     def show_films(self):
         self.clear_content()
 
@@ -267,7 +358,6 @@ class StreamoraAdmin:
             tk.Button(self.content_frame, text="+ Ajouter", command=self.add_film_dialog,
                      bg="#9333ea", fg="white", relief="flat").pack(anchor="e", padx=20)
 
-        # Films list
         try:
             films = self.db.fetchall("""
                 SELECT f.*, (SELECT COUNT(*) FROM "Download" d WHERE d."filmId" = f.id) as downloads
@@ -280,11 +370,18 @@ class StreamoraAdmin:
             scroll = ctk.CTkScrollableFrame(self.content_frame)
             scroll.pack(fill="both", expand=True, padx=20, pady=10)
 
+            if not films:
+                ctk.CTkLabel(scroll, text="Aucun film. Clique '+ Ajouter un film' pour commencer.",
+                            font=("", 14), text_color="gray").pack(pady=40)
+
             for film in films:
                 row = ctk.CTkFrame(scroll)
                 row.pack(fill="x", pady=3)
 
-                info = f"{'⭐ ' if film.get('featured') else ''}{film['title']}  |  {film.get('year', '')}  |  {film.get('category', '')}  |  ⬇️ {film.get('downloads', 0)}"
+                featured = "⭐ " if film.get("featured") else ""
+                has_video = "🎥" if film.get("videoUrl") else "⚠️"
+                has_poster = "🖼️" if film.get("posterUrl") else ""
+                info = f"{has_video} {has_poster} {featured}{film['title']}  |  {film.get('year', '')}  |  {film.get('category', '')}  |  ⬇️ {film.get('downloads', 0)}"
                 ctk.CTkLabel(row, text=info, font=("", 13), anchor="w").pack(side="left", padx=10, pady=8)
 
                 btn_frame = ctk.CTkFrame(row, fg_color="transparent")
@@ -293,10 +390,6 @@ class StreamoraAdmin:
                              fg_color="#333355", hover_color="#444466").pack(side="left", padx=2)
                 ctk.CTkButton(btn_frame, text="🗑️", width=35, command=lambda fid=film["id"], t=film["title"]: self.delete_film(fid, t),
                              fg_color="#553333", hover_color="#664444").pack(side="left", padx=2)
-        else:
-            for film in films:
-                tk.Label(self.content_frame, text=f"{film['title']} ({film.get('year','')})",
-                        bg="#1a1a2e", fg="white").pack(anchor="w", padx=20)
 
     def add_film_dialog(self):
         self._film_dialog("Ajouter un film")
@@ -312,20 +405,23 @@ class StreamoraAdmin:
         else:
             dialog = tk.Toplevel(self.root)
         dialog.title(title)
-        dialog.geometry("500x600")
+        dialog.geometry("550x700")
         dialog.transient(self.root)
         dialog.grab_set()
 
+        # State for file paths
+        video_path = tk.StringVar(value="")
+        poster_path = tk.StringVar(value="")
+        video_url = tk.StringVar(value=film.get("videoUrl", "") if film else "")
+        poster_url = tk.StringVar(value=film.get("posterUrl", "") if film else "")
+
         fields = {}
         field_defs = [
-            ("title", "Titre", ""),
+            ("title", "Titre du film", ""),
             ("description", "Description", ""),
             ("category", "Catégorie", "Autre"),
             ("year", "Année", "2024"),
-            ("duration", "Durée", ""),
-            ("videoUrl", "URL de la vidéo", ""),
-            ("posterUrl", "URL de l'affiche", ""),
-            ("trailerUrl", "URL du trailer", ""),
+            ("duration", "Durée (ex: 1h30)", ""),
         ]
 
         if USE_CTK:
@@ -333,17 +429,65 @@ class StreamoraAdmin:
             scroll.pack(fill="both", expand=True, padx=20, pady=10)
 
             for key, label, default in field_defs:
-                ctk.CTkLabel(scroll, text=label).pack(anchor="w", pady=(8, 2))
-                entry = ctk.CTkEntry(scroll, width=400)
+                ctk.CTkLabel(scroll, text=label, font=("", 13)).pack(anchor="w", pady=(10, 2))
+                entry = ctk.CTkEntry(scroll, width=450)
                 entry.pack(fill="x")
                 val = str(film.get(key, default)) if film else default
                 if val:
                     entry.insert(0, val)
                 fields[key] = entry
 
+            # ─── VIDEO FILE ───
+            ctk.CTkLabel(scroll, text="Fichier vidéo", font=("", 13, "bold")).pack(anchor="w", pady=(15, 2))
+
+            video_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+            video_frame.pack(fill="x")
+
+            video_label = ctk.CTkLabel(video_frame, text=video_url.get() or "Aucun fichier sélectionné",
+                                       font=("", 11), text_color="gray", wraplength=350)
+            video_label.pack(side="left", padx=(0, 10))
+
+            def pick_video():
+                path = filedialog.askopenfilename(
+                    title="Sélectionner un fichier vidéo",
+                    filetypes=[("Vidéos", " ".join(f"*{e}" for e in VIDEO_EXTENSIONS)), ("Tous", "*.*")]
+                )
+                if path:
+                    video_path.set(path)
+                    video_label.configure(text=f"📁 {os.path.basename(path)}")
+
+            ctk.CTkButton(video_frame, text="📂 Choisir", command=pick_video,
+                         fg_color="#333355", hover_color="#444466", width=100).pack(side="right")
+
+            # ─── POSTER IMAGE ───
+            ctk.CTkLabel(scroll, text="Image / Affiche", font=("", 13, "bold")).pack(anchor="w", pady=(15, 2))
+
+            poster_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+            poster_frame.pack(fill="x")
+
+            poster_label = ctk.CTkLabel(poster_frame, text=poster_url.get() or "Aucune image sélectionnée",
+                                        font=("", 11), text_color="gray", wraplength=350)
+            poster_label.pack(side="left", padx=(0, 10))
+
+            def pick_poster():
+                path = filedialog.askopenfilename(
+                    title="Sélectionner une image",
+                    filetypes=[("Images", " ".join(f"*{e}" for e in IMAGE_EXTENSIONS)), ("Tous", "*.*")]
+                )
+                if path:
+                    poster_path.set(path)
+                    poster_label.configure(text=f"🖼️ {os.path.basename(path)}")
+
+            ctk.CTkButton(poster_frame, text="📂 Choisir", command=pick_poster,
+                         fg_color="#333355", hover_color="#444466", width=100).pack(side="right")
+
             # Featured checkbox
             featured_var = tk.BooleanVar(value=bool(film.get("featured")) if film else False)
-            ctk.CTkCheckBox(scroll, text="En vedette (affiché en héro)", variable=featured_var).pack(anchor="w", pady=(10, 5))
+            ctk.CTkCheckBox(scroll, text="⭐ En vedette (affiché en héro sur le site)", variable=featured_var).pack(anchor="w", pady=(15, 5))
+
+            # Progress label
+            progress_label = ctk.CTkLabel(scroll, text="", font=("", 12), text_color="#9333ea")
+            progress_label.pack(pady=5)
 
             def save():
                 data = {k: v.get().strip() for k, v in fields.items()}
@@ -356,77 +500,70 @@ class StreamoraAdmin:
                 except ValueError:
                     year = 2024
 
-                if film:
-                    self.db.execute("""
-                        UPDATE "Film" SET title=%s, description=%s, category=%s, year=%s,
-                        duration=%s, "videoUrl"=%s, "posterUrl"=%s, "trailerUrl"=%s,
-                        featured=%s, "updatedAt"=NOW()
-                        WHERE id=%s
-                    """, (data["title"], data["description"], data["category"], year,
-                          data["duration"], data["videoUrl"], data["posterUrl"], data["trailerUrl"],
-                          featured_var.get(), film["id"]))
-                else:
-                    self.db.execute("""
-                        INSERT INTO "Film" (id, title, description, category, year, duration,
-                        "videoUrl", "posterUrl", "trailerUrl", featured, "createdAt", "updatedAt")
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    """, (generate_cuid(), data["title"], data["description"], data["category"],
-                          year, data["duration"], data["videoUrl"], data["posterUrl"],
-                          data["trailerUrl"], featured_var.get()))
+                # Disable save button
+                save_btn.configure(state="disabled", text="Enregistrement...")
 
-                dialog.destroy()
-                self.show_films()
+                def do_save():
+                    v_url = video_url.get()
+                    p_url = poster_url.get()
 
-            ctk.CTkButton(scroll, text="Enregistrer", command=save,
-                         fg_color="#9333ea", hover_color="#7e22ce").pack(pady=15)
-        else:
-            for key, label, default in field_defs:
-                tk.Label(dialog, text=label).pack(anchor="w", padx=20)
-                entry = tk.Entry(dialog, width=50)
-                entry.pack(padx=20)
-                val = str(film.get(key, default)) if film else default
-                if val:
-                    entry.insert(0, val)
-                fields[key] = entry
+                    # Upload video if new file selected
+                    if video_path.get():
+                        self.root.after(0, progress_label.configure, {"text": "Upload de la vidéo..."})
+                        v_url = self.uploader.upload(video_path.get(),
+                                                     callback=lambda m: self.root.after(0, self.set_status, m))
+                        if not v_url:
+                            self.root.after(0, lambda: messagebox.showerror("Erreur", "Échec de l'upload vidéo"))
+                            self.root.after(0, save_btn.configure, {"state": "normal", "text": "Enregistrer"})
+                            return
 
-            featured_var = tk.BooleanVar(value=bool(film.get("featured")) if film else False)
-            tk.Checkbutton(dialog, text="En vedette", variable=featured_var).pack(anchor="w", padx=20)
+                    # Upload poster if new file selected
+                    if poster_path.get():
+                        self.root.after(0, progress_label.configure, {"text": "Upload de l'image..."})
+                        p_url = self.uploader.upload(poster_path.get(),
+                                                     callback=lambda m: self.root.after(0, self.set_status, m))
+                        if not p_url:
+                            self.root.after(0, lambda: messagebox.showerror("Erreur", "Échec de l'upload image"))
+                            self.root.after(0, save_btn.configure, {"state": "normal", "text": "Enregistrer"})
+                            return
 
-            def save():
-                data = {k: v.get().strip() for k, v in fields.items()}
-                if not data["title"]:
-                    messagebox.showerror("Erreur", "Le titre est requis")
-                    return
-                try:
-                    year = int(data["year"]) if data["year"] else 2024
-                except ValueError:
-                    year = 2024
-                if film:
-                    self.db.execute("""
-                        UPDATE "Film" SET title=%s, description=%s, category=%s, year=%s,
-                        duration=%s, "videoUrl"=%s, "posterUrl"=%s, "trailerUrl"=%s,
-                        featured=%s, "updatedAt"=NOW()
-                        WHERE id=%s
-                    """, (data["title"], data["description"], data["category"], year,
-                          data["duration"], data["videoUrl"], data["posterUrl"], data["trailerUrl"],
-                          featured_var.get(), film["id"]))
-                else:
-                    self.db.execute("""
-                        INSERT INTO "Film" (id, title, description, category, year, duration,
-                        "videoUrl", "posterUrl", "trailerUrl", featured, "createdAt", "updatedAt")
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    """, (generate_cuid(), data["title"], data["description"], data["category"],
-                          year, data["duration"], data["videoUrl"], data["posterUrl"],
-                          data["trailerUrl"], featured_var.get()))
-                dialog.destroy()
-                self.show_films()
+                    try:
+                        if film:
+                            self.db.execute("""
+                                UPDATE "Film" SET title=%s, description=%s, category=%s, year=%s,
+                                duration=%s, "videoUrl"=%s, "posterUrl"=%s,
+                                featured=%s, "updatedAt"=NOW()
+                                WHERE id=%s
+                            """, (data["title"], data["description"], data["category"], year,
+                                  data["duration"], v_url, p_url,
+                                  featured_var.get(), film["id"]))
+                        else:
+                            self.db.execute("""
+                                INSERT INTO "Film" (id, title, description, category, year, duration,
+                                "videoUrl", "posterUrl", "trailerUrl", featured, "createdAt", "updatedAt")
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            """, (generate_cuid(), data["title"], data["description"], data["category"],
+                                  year, data["duration"], v_url, p_url, "", featured_var.get()))
 
-            tk.Button(dialog, text="Enregistrer", command=save, bg="#9333ea", fg="white").pack(pady=10)
+                        self.root.after(0, dialog.destroy)
+                        self.root.after(0, self.show_films)
+                        self.root.after(0, self.set_status, "Film enregistré !")
+                    except Exception as e:
+                        self.root.after(0, lambda: messagebox.showerror("Erreur", str(e)))
+                        self.root.after(0, save_btn.configure, {"state": "normal", "text": "Enregistrer"})
+
+                threading.Thread(target=do_save, daemon=True).start()
+
+            save_btn = ctk.CTkButton(scroll, text="Enregistrer", command=save,
+                                    fg_color="#9333ea", hover_color="#7e22ce", height=40, font=("", 14))
+            save_btn.pack(pady=15, fill="x")
 
     def delete_film(self, film_id, title):
         if messagebox.askyesno("Confirmer", f"Supprimer le film \"{title}\" ?"):
             self.db.execute('DELETE FROM "Film" WHERE id = %s', (film_id,))
             self.show_films()
+
+    # ─── SERIES ───
 
     def show_series(self):
         self.clear_content()
@@ -437,10 +574,14 @@ class StreamoraAdmin:
             ctk.CTkLabel(header, text="Séries", font=("", 24, "bold")).pack(side="left")
             ctk.CTkButton(header, text="+ Ajouter une série", command=self.add_series_dialog,
                          fg_color="#ec4899", hover_color="#db2777").pack(side="right")
+
+            scroll = ctk.CTkScrollableFrame(self.content_frame)
+            scroll.pack(fill="both", expand=True, padx=20, pady=10)
         else:
             tk.Label(self.content_frame, text="Séries", font=("", 20, "bold"), bg="#1a1a2e", fg="white").pack(anchor="w", padx=20, pady=10)
             tk.Button(self.content_frame, text="+ Ajouter", command=self.add_series_dialog,
                      bg="#ec4899", fg="white", relief="flat").pack(anchor="e", padx=20)
+            scroll = self.content_frame
 
         try:
             series_list = self.db.fetchall("""
@@ -451,28 +592,29 @@ class StreamoraAdmin:
             series_list = []
 
         if USE_CTK:
-            scroll = ctk.CTkScrollableFrame(self.content_frame)
-            scroll.pack(fill="both", expand=True, padx=20, pady=10)
+            if not series_list:
+                ctk.CTkLabel(scroll, text="Aucune série. Clique '+ Ajouter une série' pour commencer.",
+                            font=("", 14), text_color="gray").pack(pady=40)
 
             for s in series_list:
                 row = ctk.CTkFrame(scroll)
                 row.pack(fill="x", pady=3)
 
-                info = f"{'⭐ ' if s.get('featured') else ''}{s['title']}  |  {s.get('year', '')}  |  {s.get('category', '')}  |  📝 {s.get('episodes', 0)} épisodes"
+                featured = "⭐ " if s.get("featured") else ""
+                info = f"{featured}{s['title']}  |  {s.get('year', '')}  |  {s.get('category', '')}  |  📝 {s.get('episodes', 0)} épisodes"
                 ctk.CTkLabel(row, text=info, font=("", 13), anchor="w").pack(side="left", padx=10, pady=8)
 
                 btn_frame = ctk.CTkFrame(row, fg_color="transparent")
                 btn_frame.pack(side="right", padx=5)
-                ctk.CTkButton(btn_frame, text="📝", width=35, command=lambda sid=s["id"]: self.manage_episodes_dialog(sid),
+                ctk.CTkButton(btn_frame, text="📝 Épisodes", width=100,
+                             command=lambda sid=s["id"]: self.manage_episodes_dialog(sid),
                              fg_color="#1e3a5f", hover_color="#2d4a6f").pack(side="left", padx=2)
-                ctk.CTkButton(btn_frame, text="✏️", width=35, command=lambda sid=s["id"]: self.edit_series_dialog(sid),
+                ctk.CTkButton(btn_frame, text="✏️", width=35,
+                             command=lambda sid=s["id"]: self.edit_series_dialog(sid),
                              fg_color="#333355", hover_color="#444466").pack(side="left", padx=2)
-                ctk.CTkButton(btn_frame, text="🗑️", width=35, command=lambda sid=s["id"], t=s["title"]: self.delete_series(sid, t),
+                ctk.CTkButton(btn_frame, text="🗑️", width=35,
+                             command=lambda sid=s["id"], t=s["title"]: self.delete_series(sid, t),
                              fg_color="#553333", hover_color="#664444").pack(side="left", padx=2)
-        else:
-            for s in series_list:
-                tk.Label(self.content_frame, text=f"{s['title']} ({s.get('year','')})",
-                        bg="#1a1a2e", fg="white").pack(anchor="w", padx=20)
 
     def add_series_dialog(self):
         self._series_dialog("Ajouter une série")
@@ -488,17 +630,19 @@ class StreamoraAdmin:
         else:
             dialog = tk.Toplevel(self.root)
         dialog.title(title)
-        dialog.geometry("500x450")
+        dialog.geometry("550x550")
         dialog.transient(self.root)
         dialog.grab_set()
 
+        poster_path = tk.StringVar(value="")
+        poster_url = tk.StringVar(value=series.get("posterUrl", "") if series else "")
+
         fields = {}
         field_defs = [
-            ("title", "Titre", ""),
+            ("title", "Titre de la série", ""),
             ("description", "Description", ""),
             ("category", "Catégorie", "Autre"),
             ("year", "Année", "2024"),
-            ("posterUrl", "URL de l'affiche", ""),
         ]
 
         if USE_CTK:
@@ -506,16 +650,41 @@ class StreamoraAdmin:
             scroll.pack(fill="both", expand=True, padx=20, pady=10)
 
             for key, label, default in field_defs:
-                ctk.CTkLabel(scroll, text=label).pack(anchor="w", pady=(8, 2))
-                entry = ctk.CTkEntry(scroll, width=400)
+                ctk.CTkLabel(scroll, text=label, font=("", 13)).pack(anchor="w", pady=(10, 2))
+                entry = ctk.CTkEntry(scroll, width=450)
                 entry.pack(fill="x")
                 val = str(series.get(key, default)) if series else default
                 if val:
                     entry.insert(0, val)
                 fields[key] = entry
 
+            # Poster image
+            ctk.CTkLabel(scroll, text="Image / Affiche", font=("", 13, "bold")).pack(anchor="w", pady=(15, 2))
+
+            poster_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+            poster_frame.pack(fill="x")
+
+            poster_label = ctk.CTkLabel(poster_frame, text=poster_url.get() or "Aucune image",
+                                        font=("", 11), text_color="gray", wraplength=350)
+            poster_label.pack(side="left", padx=(0, 10))
+
+            def pick_poster():
+                path = filedialog.askopenfilename(
+                    title="Sélectionner une image",
+                    filetypes=[("Images", " ".join(f"*{e}" for e in IMAGE_EXTENSIONS)), ("Tous", "*.*")]
+                )
+                if path:
+                    poster_path.set(path)
+                    poster_label.configure(text=f"🖼️ {os.path.basename(path)}")
+
+            ctk.CTkButton(poster_frame, text="📂 Choisir", command=pick_poster,
+                         fg_color="#333355", hover_color="#444466", width=100).pack(side="right")
+
             featured_var = tk.BooleanVar(value=bool(series.get("featured")) if series else False)
-            ctk.CTkCheckBox(scroll, text="En vedette", variable=featured_var).pack(anchor="w", pady=(10, 5))
+            ctk.CTkCheckBox(scroll, text="⭐ En vedette", variable=featured_var).pack(anchor="w", pady=(15, 5))
+
+            progress_label = ctk.CTkLabel(scroll, text="", font=("", 12), text_color="#ec4899")
+            progress_label.pack(pady=5)
 
             def save():
                 data = {k: v.get().strip() for k, v in fields.items()}
@@ -526,128 +695,146 @@ class StreamoraAdmin:
                     year = int(data["year"]) if data["year"] else 2024
                 except ValueError:
                     year = 2024
-                if series:
-                    self.db.execute("""
-                        UPDATE "Series" SET title=%s, description=%s, category=%s, year=%s,
-                        "posterUrl"=%s, featured=%s, "updatedAt"=NOW()
-                        WHERE id=%s
-                    """, (data["title"], data["description"], data["category"], year,
-                          data["posterUrl"], featured_var.get(), series["id"]))
-                else:
-                    self.db.execute("""
-                        INSERT INTO "Series" (id, title, description, category, year,
-                        "posterUrl", featured, "createdAt", "updatedAt")
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    """, (generate_cuid(), data["title"], data["description"], data["category"],
-                          year, data["posterUrl"], featured_var.get()))
-                dialog.destroy()
-                self.show_series()
 
-            ctk.CTkButton(scroll, text="Enregistrer", command=save,
-                         fg_color="#ec4899", hover_color="#db2777").pack(pady=15)
-        else:
-            for key, label, default in field_defs:
-                tk.Label(dialog, text=label).pack(anchor="w", padx=20)
-                entry = tk.Entry(dialog, width=50)
-                entry.pack(padx=20)
-                val = str(series.get(key, default)) if series else default
-                if val:
-                    entry.insert(0, val)
-                fields[key] = entry
+                save_btn.configure(state="disabled", text="Enregistrement...")
 
-            featured_var = tk.BooleanVar(value=bool(series.get("featured")) if series else False)
-            tk.Checkbutton(dialog, text="En vedette", variable=featured_var).pack(anchor="w", padx=20)
+                def do_save():
+                    p_url = poster_url.get()
+                    if poster_path.get():
+                        self.root.after(0, progress_label.configure, {"text": "Upload de l'image..."})
+                        p_url = self.uploader.upload(poster_path.get(),
+                                                     callback=lambda m: self.root.after(0, self.set_status, m))
 
-            def save():
-                data = {k: v.get().strip() for k, v in fields.items()}
-                if not data["title"]:
-                    messagebox.showerror("Erreur", "Le titre est requis")
-                    return
-                try:
-                    year = int(data["year"]) if data["year"] else 2024
-                except ValueError:
-                    year = 2024
-                if series:
-                    self.db.execute("""
-                        UPDATE "Series" SET title=%s, description=%s, category=%s, year=%s,
-                        "posterUrl"=%s, featured=%s, "updatedAt"=NOW()
-                        WHERE id=%s
-                    """, (data["title"], data["description"], data["category"], year,
-                          data["posterUrl"], featured_var.get(), series["id"]))
-                else:
-                    self.db.execute("""
-                        INSERT INTO "Series" (id, title, description, category, year,
-                        "posterUrl", featured, "createdAt", "updatedAt")
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    """, (generate_cuid(), data["title"], data["description"], data["category"],
-                          year, data["posterUrl"], featured_var.get()))
-                dialog.destroy()
-                self.show_series()
+                    try:
+                        if series:
+                            self.db.execute("""
+                                UPDATE "Series" SET title=%s, description=%s, category=%s, year=%s,
+                                "posterUrl"=%s, featured=%s, "updatedAt"=NOW()
+                                WHERE id=%s
+                            """, (data["title"], data["description"], data["category"], year,
+                                  p_url, featured_var.get(), series["id"]))
+                        else:
+                            self.db.execute("""
+                                INSERT INTO "Series" (id, title, description, category, year,
+                                "posterUrl", featured, "createdAt", "updatedAt")
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            """, (generate_cuid(), data["title"], data["description"], data["category"],
+                                  year, p_url, featured_var.get()))
 
-            tk.Button(dialog, text="Enregistrer", command=save, bg="#ec4899", fg="white").pack(pady=10)
+                        self.root.after(0, dialog.destroy)
+                        self.root.after(0, self.show_series)
+                    except Exception as e:
+                        self.root.after(0, lambda: messagebox.showerror("Erreur", str(e)))
+                        self.root.after(0, save_btn.configure, {"state": "normal", "text": "Enregistrer"})
+
+                threading.Thread(target=do_save, daemon=True).start()
+
+            save_btn = ctk.CTkButton(scroll, text="Enregistrer", command=save,
+                                    fg_color="#ec4899", hover_color="#db2777", height=40, font=("", 14))
+            save_btn.pack(pady=15, fill="x")
 
     def delete_series(self, series_id, title):
         if messagebox.askyesno("Confirmer", f"Supprimer la série \"{title}\" et tous ses épisodes ?"):
             self.db.execute('DELETE FROM "Series" WHERE id = %s', (series_id,))
             self.show_series()
 
+    # ─── EPISODES ───
+
     def manage_episodes_dialog(self, series_id):
         series = self.db.fetchone('SELECT * FROM "Series" WHERE id = %s', (series_id,))
-        episodes = self.db.fetchall(
-            'SELECT * FROM "Episode" WHERE "seriesId" = %s ORDER BY season, number', (series_id,))
 
         if USE_CTK:
             dialog = ctk.CTkToplevel(self.root)
         else:
             dialog = tk.Toplevel(self.root)
         dialog.title(f"Épisodes — {series['title']}")
-        dialog.geometry("600x500")
+        dialog.geometry("700x600")
         dialog.transient(self.root)
         dialog.grab_set()
 
-        def refresh_episodes():
-            nonlocal episodes
-            episodes = self.db.fetchall(
-                'SELECT * FROM "Episode" WHERE "seriesId" = %s ORDER BY season, number', (series_id,))
-            for w in ep_list.winfo_children():
-                w.destroy()
-
-            for ep in episodes:
-                if USE_CTK:
-                    row = ctk.CTkFrame(ep_list)
-                    row.pack(fill="x", pady=2)
-                    text = f"S{ep['season']:02d}E{ep['number']:02d} — {ep.get('title', '')}"
-                    ctk.CTkLabel(row, text=text, font=("", 12), anchor="w").pack(side="left", padx=10, pady=5)
-                    ctk.CTkButton(row, text="🗑️", width=30,
-                                 command=lambda eid=ep["id"]: (self.db.execute('DELETE FROM "Episode" WHERE id=%s', (eid,)), refresh_episodes()),
-                                 fg_color="#553333", hover_color="#664444").pack(side="right", padx=5)
-                else:
-                    tk.Label(ep_list, text=f"S{ep['season']:02d}E{ep['number']:02d} — {ep.get('title', '')}",
-                            bg="#1a1a2e", fg="white").pack(anchor="w")
-
         if USE_CTK:
-            ctk.CTkLabel(dialog, text=f"Épisodes de {series['title']}", font=("", 18, "bold")).pack(pady=(15, 5))
+            ctk.CTkLabel(dialog, text=f"📺 {series['title']}", font=("", 20, "bold")).pack(pady=(15, 5))
+            ctk.CTkLabel(dialog, text="Gérer les épisodes par saison", font=("", 13), text_color="gray").pack(pady=(0, 10))
 
+            # Add episode section
             add_frame = ctk.CTkFrame(dialog)
             add_frame.pack(fill="x", padx=20, pady=10)
 
-            ctk.CTkLabel(add_frame, text="Saison:").grid(row=0, column=0, padx=5, pady=5)
+            ctk.CTkLabel(add_frame, text="Ajouter un épisode", font=("", 14, "bold")).grid(row=0, column=0, columnspan=4, padx=10, pady=(10, 5), sticky="w")
+
+            ctk.CTkLabel(add_frame, text="Saison:").grid(row=1, column=0, padx=5, pady=5)
             season_entry = ctk.CTkEntry(add_frame, width=60)
-            season_entry.grid(row=0, column=1, padx=5)
+            season_entry.grid(row=1, column=1, padx=5)
             season_entry.insert(0, "1")
 
-            ctk.CTkLabel(add_frame, text="Épisode:").grid(row=0, column=2, padx=5)
+            ctk.CTkLabel(add_frame, text="Épisode:").grid(row=1, column=2, padx=5)
             number_entry = ctk.CTkEntry(add_frame, width=60)
-            number_entry.grid(row=0, column=3, padx=5)
-            number_entry.insert(0, str(len(episodes) + 1))
+            number_entry.grid(row=1, column=3, padx=5)
+            number_entry.insert(0, "1")
 
-            ctk.CTkLabel(add_frame, text="Titre:").grid(row=1, column=0, padx=5, pady=5)
-            title_entry = ctk.CTkEntry(add_frame, width=200)
-            title_entry.grid(row=1, column=1, columnspan=3, padx=5, sticky="ew")
+            ctk.CTkLabel(add_frame, text="Titre:").grid(row=2, column=0, padx=5, pady=5)
+            title_entry = ctk.CTkEntry(add_frame, width=300)
+            title_entry.grid(row=2, column=1, columnspan=3, padx=5, sticky="ew")
 
-            ctk.CTkLabel(add_frame, text="URL vidéo:").grid(row=2, column=0, padx=5, pady=5)
-            video_entry = ctk.CTkEntry(add_frame, width=200)
-            video_entry.grid(row=2, column=1, columnspan=3, padx=5, sticky="ew")
+            # Video file picker for episode
+            ctk.CTkLabel(add_frame, text="Vidéo:").grid(row=3, column=0, padx=5, pady=5)
+            ep_video_path = tk.StringVar(value="")
+            ep_video_label = ctk.CTkLabel(add_frame, text="Aucun fichier", font=("", 11), text_color="gray")
+            ep_video_label.grid(row=3, column=1, columnspan=2, padx=5, sticky="w")
+
+            def pick_ep_video():
+                path = filedialog.askopenfilename(
+                    title="Sélectionner un fichier vidéo",
+                    filetypes=[("Vidéos", " ".join(f"*{e}" for e in VIDEO_EXTENSIONS)), ("Tous", "*.*")]
+                )
+                if path:
+                    ep_video_path.set(path)
+                    ep_video_label.configure(text=f"📁 {os.path.basename(path)}")
+
+            ctk.CTkButton(add_frame, text="📂", command=pick_ep_video,
+                         fg_color="#333355", hover_color="#444466", width=40).grid(row=3, column=3, padx=5)
+
+            progress_label = ctk.CTkLabel(add_frame, text="", font=("", 11), text_color="#9333ea")
+            progress_label.grid(row=4, column=0, columnspan=4, padx=5, pady=2)
+
+            ep_list = ctk.CTkScrollableFrame(dialog)
+            ep_list.pack(fill="both", expand=True, padx=20, pady=10)
+
+            def refresh_episodes():
+                episodes = self.db.fetchall(
+                    'SELECT * FROM "Episode" WHERE "seriesId" = %s ORDER BY season, number', (series_id,))
+                for w in ep_list.winfo_children():
+                    w.destroy()
+
+                current_season = None
+                for ep in episodes:
+                    if ep["season"] != current_season:
+                        current_season = ep["season"]
+                        ctk.CTkLabel(ep_list, text=f"── Saison {current_season} ──",
+                                    font=("", 13, "bold"), text_color="#ec4899").pack(anchor="w", pady=(10, 3))
+
+                    row = ctk.CTkFrame(ep_list)
+                    row.pack(fill="x", pady=2)
+
+                    has_video = "🎥" if ep.get("videoUrl") else "⚠️"
+                    text = f"  {has_video}  E{ep['number']:02d} — {ep.get('title', 'Sans titre')}"
+                    ctk.CTkLabel(row, text=text, font=("", 12), anchor="w").pack(side="left", padx=10, pady=5)
+
+                    ctk.CTkButton(row, text="🗑️", width=30,
+                                 command=lambda eid=ep["id"]: (self.db.execute('DELETE FROM "Episode" WHERE id=%s', (eid,)), refresh_episodes()),
+                                 fg_color="#553333", hover_color="#664444").pack(side="right", padx=5)
+
+                if not episodes:
+                    ctk.CTkLabel(ep_list, text="Aucun épisode. Ajoutez-en ci-dessus.",
+                                font=("", 13), text_color="gray").pack(pady=20)
+
+                # Update episode number suggestion
+                if episodes:
+                    last = episodes[-1]
+                    number_entry.delete(0, "end")
+                    number_entry.insert(0, str(last["number"] + 1))
+                    season_entry.delete(0, "end")
+                    season_entry.insert(0, str(last["season"]))
 
             def add_episode():
                 try:
@@ -656,34 +843,46 @@ class StreamoraAdmin:
                 except ValueError:
                     messagebox.showerror("Erreur", "Saison et épisode doivent être des nombres")
                     return
-                self.db.execute("""
-                    INSERT INTO "Episode" (id, "seriesId", season, number, title, "videoUrl", "createdAt")
-                    VALUES (%s, %s, %s, %s, %s, %s, NOW())
-                """, (generate_cuid(), series_id, s, n, title_entry.get().strip(), video_entry.get().strip()))
-                number_entry.delete(0, "end")
-                number_entry.insert(0, str(n + 1))
-                title_entry.delete(0, "end")
-                video_entry.delete(0, "end")
-                refresh_episodes()
 
-            ctk.CTkButton(add_frame, text="Ajouter", command=add_episode,
-                         fg_color="#9333ea", hover_color="#7e22ce").grid(row=3, column=0, columnspan=4, pady=10)
+                ep_title = title_entry.get().strip()
+                add_btn.configure(state="disabled", text="Upload...")
 
-            ep_list = ctk.CTkScrollableFrame(dialog)
-            ep_list.pack(fill="both", expand=True, padx=20, pady=10)
-        else:
-            ep_list = tk.Frame(dialog, bg="#1a1a2e")
-            ep_list.pack(fill="both", expand=True)
+                def do_add():
+                    v_url = ""
+                    if ep_video_path.get():
+                        self.root.after(0, progress_label.configure, {"text": "Upload de la vidéo..."})
+                        v_url = self.uploader.upload(ep_video_path.get(),
+                                                     callback=lambda m: self.root.after(0, self.set_status, m))
 
-        refresh_episodes()
+                    self.db.execute("""
+                        INSERT INTO "Episode" (id, "seriesId", season, number, title, "videoUrl", "createdAt")
+                        VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                    """, (generate_cuid(), series_id, s, n, ep_title, v_url))
+
+                    self.root.after(0, lambda: (
+                        title_entry.delete(0, "end"),
+                        ep_video_path.set(""),
+                        ep_video_label.configure(text="Aucun fichier"),
+                        progress_label.configure(text=""),
+                        add_btn.configure(state="normal", text="+ Ajouter l'épisode"),
+                        refresh_episodes(),
+                    ))
+
+                threading.Thread(target=do_add, daemon=True).start()
+
+            add_btn = ctk.CTkButton(add_frame, text="+ Ajouter l'épisode", command=add_episode,
+                                   fg_color="#9333ea", hover_color="#7e22ce")
+            add_btn.grid(row=5, column=0, columnspan=4, pady=10)
+
+            refresh_episodes()
+
+    # ─── PROFILES ───
 
     def show_profiles(self):
         self.clear_content()
 
         if USE_CTK:
             ctk.CTkLabel(self.content_frame, text="Profils", font=("", 24, "bold")).pack(anchor="w", padx=20, pady=(20, 10))
-        else:
-            tk.Label(self.content_frame, text="Profils", font=("", 20, "bold"), bg="#1a1a2e", fg="white").pack(anchor="w", padx=20, pady=10)
 
         try:
             profiles = self.db.fetchall('SELECT * FROM "Profile" ORDER BY "createdAt" ASC')
@@ -694,6 +893,10 @@ class StreamoraAdmin:
             scroll = ctk.CTkScrollableFrame(self.content_frame)
             scroll.pack(fill="both", expand=True, padx=20, pady=10)
 
+            if not profiles:
+                ctk.CTkLabel(scroll, text="Aucun profil. Les profils sont créés depuis le site web.",
+                            font=("", 14), text_color="gray").pack(pady=40)
+
             for p in profiles:
                 row = ctk.CTkFrame(scroll)
                 row.pack(fill="x", pady=3)
@@ -702,9 +905,6 @@ class StreamoraAdmin:
                 ctk.CTkButton(row, text="🗑️", width=35,
                              command=lambda pid=p["id"], n=p["name"]: self.delete_profile(pid, n),
                              fg_color="#553333", hover_color="#664444").pack(side="right", padx=5)
-        else:
-            for p in profiles:
-                tk.Label(self.content_frame, text=f"👤 {p['name']}", bg="#1a1a2e", fg="white").pack(anchor="w", padx=20)
 
     def delete_profile(self, profile_id, name):
         if messagebox.askyesno("Confirmer", f"Supprimer le profil \"{name}\" ?"):
