@@ -18,6 +18,12 @@ export default async function HomePage() {
     include: { _count: { select: { downloads: true } } },
   });
 
+  const latestSeries = await prisma.series.findMany({
+    take: 6,
+    orderBy: { createdAt: "desc" },
+    include: { _count: { select: { episodes: true } } },
+  });
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Hero */}
@@ -28,12 +34,17 @@ export default async function HomePage() {
             <span className="text-primary-400">Streamora</span>
           </h1>
           <p className="mb-6 max-w-2xl text-lg text-gray-300">
-            Regardez et téléchargez vos films préférés. Des centaines de films
-            disponibles en streaming et en téléchargement.
+            Regardez et téléchargez vos films et séries préférés. Des centaines de
+            contenus disponibles en streaming et en téléchargement.
           </p>
-          <Link href="/films" className="btn-primary text-base px-8 py-3">
-            Explorer les films
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/films" className="btn-primary text-base px-8 py-3">
+              Explorer les films
+            </Link>
+            <Link href="/series" className="btn-secondary text-base px-8 py-3">
+              Voir les séries
+            </Link>
+          </div>
         </div>
         <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary-600/10 blur-3xl" />
         <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-primary-500/10 blur-3xl" />
@@ -79,6 +90,43 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+
+      {/* Latest Series */}
+      {latestSeries.length > 0 && (
+        <section className="mt-12">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Séries</h2>
+            <Link href="/series" className="text-sm text-primary-400 hover:text-primary-300">
+              Voir tout &rarr;
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {latestSeries.map((s) => (
+              <Link key={s.id} href={`/series/${s.id}`} className="card group">
+                <div className="relative aspect-[2/3] bg-gray-800">
+                  {s.posterUrl ? (
+                    <Image src={s.posterUrl} alt={s.title} fill className="object-cover" sizes="16vw" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-gray-600">
+                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold line-clamp-1">{s.title}</h3>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                    <span>{s.year}</span>
+                    <span>·</span>
+                    <span>{s._count.episodes} épisode{s._count.episodes > 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

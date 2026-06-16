@@ -21,35 +21,41 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const [films, stats] = await Promise.all([
+  const [films, seriesList, statsData, recentDownloads] = await Promise.all([
     prisma.film.findMany({
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { downloads: true } } },
+    }),
+    prisma.series.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { episodes: true } } },
     }),
     Promise.all([
       prisma.film.count(),
       prisma.user.count(),
       prisma.download.count(),
-    ]).then(([totalFilms, totalUsers, totalDownloads]) => ({
+      prisma.series.count(),
+    ]).then(([totalFilms, totalUsers, totalDownloads, totalSeries]) => ({
       totalFilms,
       totalUsers,
       totalDownloads,
+      totalSeries,
     })),
+    prisma.download.findMany({
+      include: {
+        film: { select: { title: true } },
+        user: { select: { name: true, email: true, image: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
   ]);
-
-  const recentDownloads = await prisma.download.findMany({
-    include: {
-      film: { select: { title: true } },
-      user: { select: { name: true, email: true, image: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
 
   return (
     <AdminDashboard
       films={films}
-      stats={stats}
+      series={seriesList}
+      stats={statsData}
       recentDownloads={recentDownloads}
     />
   );

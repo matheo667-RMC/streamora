@@ -11,10 +11,11 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
-  const [totalFilms, totalUsers, totalDownloads] = await Promise.all([
+  const [totalFilms, totalUsers, totalDownloads, totalSeries] = await Promise.all([
     prisma.film.count(),
     prisma.user.count(),
     prisma.download.count(),
+    prisma.series.count(),
   ]);
 
   const topFilms = await prisma.film.findMany({
@@ -36,6 +37,7 @@ export async function GET() {
     totalFilms,
     totalUsers,
     totalDownloads,
+    totalSeries,
     topFilms,
     recentDownloads,
   });

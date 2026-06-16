@@ -37,6 +37,12 @@ export function Navbar() {
           >
             Films
           </Link>
+          <Link
+            href="/series"
+            className="text-sm text-gray-300 hover:text-white transition-colors"
+          >
+            Séries
+          </Link>
           {isAdmin && (
             <Link
               href="/admin"
