@@ -59,6 +59,24 @@ Site de streaming de films avec authentification Google, panneau admin et télé
 7. Ajoutez `http://localhost:3000/api/auth/callback/google` dans les URIs de redirection
 8. Copiez le Client ID et Client Secret dans votre `.env`
 
+## Déploiement sur Vercel
+
+1. Allez sur [vercel.com](https://vercel.com) et connectez-vous avec GitHub
+2. Cliquez "Add New Project" et importez le repo `streamora`
+3. **Important** : Dans les paramètres du projet, configurez le **Root Directory** sur `web`
+4. Ajoutez les variables d'environnement dans Vercel (Settings > Environment Variables) :
+   - `DATABASE_URL` = `file:./dev.db`
+   - `NEXTAUTH_URL` = `https://votre-domaine.vercel.app`
+   - `NEXTAUTH_SECRET` = (générez avec `openssl rand -base64 32`)
+   - `GOOGLE_CLIENT_ID` = votre Client ID Google
+   - `GOOGLE_CLIENT_SECRET` = votre Client Secret Google
+   - `ADMIN_EMAIL` = votre email admin
+5. N'oubliez pas d'ajouter votre domaine Vercel dans les URIs de redirection Google OAuth :
+   `https://votre-domaine.vercel.app/api/auth/callback/google`
+6. Cliquez "Deploy"
+
+> **Note** : Pour la production, il est recommandé d'utiliser une base de données hébergée (ex: [Turso](https://turso.tech/) pour SQLite, ou PostgreSQL sur [Neon](https://neon.tech/)) au lieu de SQLite local.
+
 ## Admin
 
 Le premier utilisateur qui se connecte avec l'email défini dans `ADMIN_EMAIL` recevra automatiquement le rôle admin. L'admin peut :
