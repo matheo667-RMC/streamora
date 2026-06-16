@@ -5,24 +5,37 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const featuredFilms = await prisma.film.findMany({
-    where: { featured: true },
-    take: 6,
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { downloads: true } } },
-  });
+  type FilmWithCount = Awaited<ReturnType<typeof prisma.film.findMany>>[number] & { _count: { downloads: number } };
+  type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
+  let featuredFilms: FilmWithCount[] = [];
+  let latestFilms: FilmWithCount[] = [];
+  let latestSeries: SeriesWithCount[] = [];
 
-  const latestFilms = await prisma.film.findMany({
-    take: 12,
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { downloads: true } } },
-  });
-
-  const latestSeries = await prisma.series.findMany({
-    take: 6,
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { episodes: true } } },
-  });
+  try {
+    const [f1, f2, s1] = await Promise.all([
+      prisma.film.findMany({
+        where: { featured: true },
+        take: 6,
+        orderBy: { createdAt: "desc" },
+        include: { _count: { select: { downloads: true } } },
+      }),
+      prisma.film.findMany({
+        take: 12,
+        orderBy: { createdAt: "desc" },
+        include: { _count: { select: { downloads: true } } },
+      }),
+      prisma.series.findMany({
+        take: 6,
+        orderBy: { createdAt: "desc" },
+        include: { _count: { select: { episodes: true } } },
+      }),
+    ]);
+    featuredFilms = f1 as FilmWithCount[];
+    latestFilms = f2 as FilmWithCount[];
+    latestSeries = s1 as SeriesWithCount[];
+  } catch {
+    // Database not available yet
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
