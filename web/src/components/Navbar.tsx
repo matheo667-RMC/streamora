@@ -11,7 +11,7 @@ export function Navbar() {
   const isAdmin = (session?.user as Record<string, unknown>)?.role === "admin";
 
   return (
-    <nav className="fixed top-0 z-50 w-full border-b border-gray-800 bg-gray-950/95 backdrop-blur-sm">
+    <nav className="fixed top-0 z-50 w-full border-b border-red-900/40 bg-gray-950/95 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <Image
