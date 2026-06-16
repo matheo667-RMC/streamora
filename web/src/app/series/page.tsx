@@ -20,20 +20,28 @@ export default async function SeriesPage({ searchParams }: Props) {
     where.title = { contains: q };
   }
 
-  const series = await prisma.series.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { episodes: true } } },
-  });
+  type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
+  let series: SeriesWithCount[] = [];
+  let categoryList: string[] = ["Toutes"];
 
-  const categories = await prisma.series.findMany({
-    select: { category: true },
-    distinct: ["category"],
-  });
-  const categoryList = [
-    "Toutes",
-    ...categories.map((c) => c.category).filter(Boolean),
-  ];
+  try {
+    series = await prisma.series.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { episodes: true } } },
+    }) as SeriesWithCount[];
+
+    const categories = await prisma.series.findMany({
+      select: { category: true },
+      distinct: ["category"],
+    });
+    categoryList = [
+      "Toutes",
+      ...categories.map((c) => c.category).filter(Boolean),
+    ];
+  } catch {
+    // Database not available yet
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">

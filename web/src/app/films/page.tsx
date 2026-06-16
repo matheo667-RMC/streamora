@@ -20,20 +20,28 @@ export default async function FilmsPage({ searchParams }: Props) {
     where.title = { contains: q };
   }
 
-  const films = await prisma.film.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { downloads: true } } },
-  });
+  type FilmWithCount = Awaited<ReturnType<typeof prisma.film.findMany>>[number] & { _count: { downloads: number } };
+  let films: FilmWithCount[] = [];
+  let categoryList: string[] = ["Toutes"];
 
-  const categories = await prisma.film.findMany({
-    select: { category: true },
-    distinct: ["category"],
-  });
-  const categoryList = [
-    "Toutes",
-    ...categories.map((c) => c.category).filter(Boolean),
-  ];
+  try {
+    films = await prisma.film.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { downloads: true } } },
+    }) as FilmWithCount[];
+
+    const categories = await prisma.film.findMany({
+      select: { category: true },
+      distinct: ["category"],
+    });
+    categoryList = [
+      "Toutes",
+      ...categories.map((c) => c.category).filter(Boolean),
+    ];
+  } catch {
+    // Database not available yet
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
