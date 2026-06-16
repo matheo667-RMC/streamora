@@ -1,27 +1,22 @@
 import type { Metadata } from "next";
 import { SessionProvider } from "@/components/SessionProvider";
-import { Navbar } from "@/components/Navbar";
-import { auth } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Streamora - Streaming de Films",
-  description: "Regardez et téléchargez vos films préférés sur Streamora",
+  title: "Streamora - Films & Séries en Streaming",
+  description: "Regardez et téléchargez vos films et séries préférés sur Streamora",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-
   return (
     <html lang="fr">
-      <body>
-        <SessionProvider session={session}>
-          <Navbar />
-          <main className="min-h-screen pt-16">{children}</main>
+      <body className="bg-black">
+        <SessionProvider>
+          {children}
         </SessionProvider>
       </body>
     </html>

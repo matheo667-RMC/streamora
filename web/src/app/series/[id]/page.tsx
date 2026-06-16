@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { Navbar } from "@/components/Navbar";
 
 interface Props {
   params: { id: string };
@@ -20,14 +20,14 @@ export default async function SeriesDetailPage({ params }: Props) {
 
   if (!series) notFound();
 
-  const session = await auth();
-
   const seasonNumbers = [...new Set(series.episodes.map((ep) => ep.season))].sort(
     (a, b) => a - b
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <>
+    <Navbar />
+    <div className="mx-auto max-w-7xl px-4 pt-24 pb-8">
       <Link
         href="/series"
         className="mb-6 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
@@ -80,14 +80,8 @@ export default async function SeriesDetailPage({ params }: Props) {
             </p>
           )}
 
-          {!session?.user && (
-            <Link href="/login" className="btn-primary mt-6 inline-block">
-              Connectez-vous pour regarder
-            </Link>
-          )}
-
           {/* Episodes by season */}
-          {session?.user && seasonNumbers.length > 0 && (
+          {seasonNumbers.length > 0 && (
             <div className="mt-8 space-y-6">
               {seasonNumbers.map((seasonNum) => {
                 const seasonEpisodes = series.episodes.filter(
@@ -136,7 +130,7 @@ export default async function SeriesDetailPage({ params }: Props) {
             </div>
           )}
 
-          {session?.user && series.episodes.length === 0 && (
+          {series.episodes.length === 0 && (
             <p className="mt-8 text-gray-400">
               Aucun épisode disponible pour le moment.
             </p>
@@ -144,5 +138,6 @@ export default async function SeriesDetailPage({ params }: Props) {
         </div>
       </div>
     </div>
+    </>
   );
 }

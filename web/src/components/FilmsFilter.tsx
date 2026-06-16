@@ -27,8 +27,8 @@ export function FilmsFilter({ categories }: { categories: string[] }) {
             onClick={() => applyFilter(cat)}
             className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
               activeCategory === cat
-                ? "bg-primary-600 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                ? "bg-purple-600 text-white"
+                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
             }`}
           >
             {cat}

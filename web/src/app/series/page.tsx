@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { FilmsFilter } from "@/components/FilmsFilter";
+import { Navbar } from "@/components/Navbar";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,9 @@ export default async function SeriesPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <>
+    <Navbar />
+    <div className="mx-auto max-w-7xl px-4 pt-24 pb-8">
       <h1 className="mb-8 text-3xl font-bold">Séries</h1>
 
       <FilmsFilter categories={categoryList} />
@@ -84,10 +87,11 @@ export default async function SeriesPage({ searchParams }: Props) {
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-12 text-center">
+        <div className="rounded-xl border border-white/5 bg-gray-900/30 p-12 text-center">
           <p className="text-gray-400">Aucune série trouvée.</p>
         </div>
       )}
     </div>
+    </>
   );
 }

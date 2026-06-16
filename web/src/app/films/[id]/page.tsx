@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
 import { DownloadButton } from "@/components/DownloadButton";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { Navbar } from "@/components/Navbar";
 
 interface Props {
   params: { id: string };
@@ -20,8 +20,6 @@ export default async function FilmDetailPage({ params }: Props) {
 
   if (!film) notFound();
 
-  const session = await auth();
-
   const relatedFilms = await prisma.film.findMany({
     where: { category: film.category, id: { not: film.id } },
     take: 6,
@@ -29,7 +27,9 @@ export default async function FilmDetailPage({ params }: Props) {
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <>
+    <Navbar />
+    <div className="mx-auto max-w-7xl px-4 pt-24 pb-8">
       <Link
         href="/films"
         className="mb-6 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
@@ -94,21 +94,16 @@ export default async function FilmDetailPage({ params }: Props) {
           )}
 
           <div className="mt-8 flex flex-wrap gap-3">
-            {film.videoUrl && session?.user && (
+            {film.videoUrl && (
               <VideoPlayer videoUrl={film.videoUrl} title={film.title} />
             )}
-            {film.videoUrl && session?.user && (
+            {film.videoUrl && (
               <DownloadButton filmId={film.id} />
-            )}
-            {!session?.user && (
-              <Link href="/login" className="btn-primary">
-                Connectez-vous pour regarder
-              </Link>
             )}
           </div>
 
           {/* Video embed */}
-          {film.videoUrl && session?.user && (
+          {film.videoUrl && (
             <div className="mt-8">
               <div className="aspect-video overflow-hidden rounded-xl bg-black">
                 <video
@@ -170,5 +165,6 @@ export default async function FilmDetailPage({ params }: Props) {
         </section>
       )}
     </div>
+    </>
   );
 }
