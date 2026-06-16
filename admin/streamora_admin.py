@@ -80,36 +80,45 @@ class DatabaseConnection:
 
 
 class FileUploader:
-    """Uploads files to the Streamora website API."""
+    """Uploads files directly to Vercel Blob storage (no size limit)."""
 
-    def __init__(self, site_url):
-        self.site_url = site_url.rstrip("/")
+    def __init__(self, blob_token):
+        self.blob_token = blob_token
 
     def upload(self, filepath, callback=None):
-        """Upload a file and return the URL. Callback receives progress messages."""
+        """Upload a file directly to Vercel Blob and return the URL."""
         filename = os.path.basename(filepath)
         filesize = os.path.getsize(filepath)
+        size_mb = filesize // (1024 * 1024)
 
         if callback:
-            callback(f"Upload de {filename} ({filesize // (1024*1024)} MB)...")
+            callback(f"Upload de {filename} ({size_mb} MB)...")
 
         try:
+            # Clean filename for URL
+            safe_name = f"{int(datetime.now().timestamp())}-{filename}"
+
             with open(filepath, "rb") as f:
-                files = {"file": (filename, f)}
-                resp = requests.post(
-                    f"{self.site_url}/api/upload",
-                    files=files,
-                    timeout=600,
+                resp = requests.put(
+                    f"https://blob.vercel-storage.com/{safe_name}",
+                    headers={
+                        "Authorization": f"Bearer {self.blob_token}",
+                        "x-api-version": "7",
+                        "content-type": "application/octet-stream",
+                    },
+                    data=f,
+                    timeout=1800,
                 )
 
             if resp.status_code == 200:
                 data = resp.json()
+                url = data.get("url", "")
                 if callback:
                     callback(f"Upload terminé : {filename}")
-                return data.get("url", "")
+                return url
             else:
                 if callback:
-                    callback(f"Erreur upload : {resp.status_code}")
+                    callback(f"Erreur upload : {resp.status_code} - {resp.text[:200]}")
                 return ""
         except Exception as e:
             if callback:
@@ -150,19 +159,22 @@ class StreamoraAdmin:
             self.conn_entry = ctk.CTkEntry(frame, width=500, placeholder_text="postgresql://user:pass@host/db?sslmode=require")
             self.conn_entry.pack(padx=20, pady=(5, 10))
 
-            ctk.CTkLabel(frame, text="URL du site Streamora :").pack(anchor="w", padx=20)
-            self.site_entry = ctk.CTkEntry(frame, width=500, placeholder_text="https://streamora-eosin.vercel.app")
-            self.site_entry.pack(padx=20, pady=(5, 15))
+            ctk.CTkLabel(frame, text="Token Vercel Blob (BLOB_READ_WRITE_TOKEN) :").pack(anchor="w", padx=20)
+            self.blob_entry = ctk.CTkEntry(frame, width=500, placeholder_text="vercel_blob_rw_xxxxx", show="*")
+            self.blob_entry.pack(padx=20, pady=(5, 10))
+
+            ctk.CTkLabel(frame, text="Trouve-le dans Vercel → Settings → Environment Variables",
+                        font=("", 11), text_color="gray").pack(padx=20)
 
             saved_db = self.config.get("database_url", "")
-            saved_site = self.config.get("site_url", "")
+            saved_blob = self.config.get("blob_token", "")
             if saved_db:
                 self.conn_entry.insert(0, saved_db)
-            if saved_site:
-                self.site_entry.insert(0, saved_site)
+            if saved_blob:
+                self.blob_entry.insert(0, saved_blob)
 
             ctk.CTkButton(frame, text="Se connecter", command=self.connect_db,
-                         fg_color="#9333ea", hover_color="#7e22ce", width=200).pack(pady=(5, 20))
+                         fg_color="#9333ea", hover_color="#7e22ce", width=200).pack(pady=(10, 20))
         else:
             frame = tk.Frame(self.root, bg="#1a1a2e")
             frame.place(relx=0.5, rely=0.5, anchor="center")
@@ -173,37 +185,37 @@ class StreamoraAdmin:
             self.conn_entry = tk.Entry(frame, width=60, bg="#2d2d44", fg="white", insertbackground="white")
             self.conn_entry.pack(padx=20, pady=(5, 10))
 
-            tk.Label(frame, text="URL du site :", bg="#1a1a2e", fg="white").pack(anchor="w", padx=20)
-            self.site_entry = tk.Entry(frame, width=60, bg="#2d2d44", fg="white", insertbackground="white")
-            self.site_entry.pack(padx=20, pady=(5, 15))
+            tk.Label(frame, text="Token Vercel Blob :", bg="#1a1a2e", fg="white").pack(anchor="w", padx=20)
+            self.blob_entry = tk.Entry(frame, width=60, bg="#2d2d44", fg="white", insertbackground="white", show="*")
+            self.blob_entry.pack(padx=20, pady=(5, 15))
 
             saved_db = self.config.get("database_url", "")
-            saved_site = self.config.get("site_url", "")
+            saved_blob = self.config.get("blob_token", "")
             if saved_db:
                 self.conn_entry.insert(0, saved_db)
-            if saved_site:
-                self.site_entry.insert(0, saved_site)
+            if saved_blob:
+                self.blob_entry.insert(0, saved_blob)
 
             tk.Button(frame, text="Se connecter", command=self.connect_db,
                      bg="#9333ea", fg="white", relief="flat", padx=20, pady=5).pack(pady=(5, 20))
 
     def connect_db(self):
         conn_str = self.conn_entry.get().strip()
-        site_url = self.site_entry.get().strip()
+        blob_token = self.blob_entry.get().strip()
 
         if not conn_str:
             messagebox.showerror("Erreur", "Veuillez entrer l'URL de connexion PostgreSQL")
             return
-        if not site_url:
-            messagebox.showerror("Erreur", "Veuillez entrer l'URL de votre site Streamora")
+        if not blob_token:
+            messagebox.showerror("Erreur", "Veuillez entrer le token Vercel Blob")
             return
 
         try:
             self.db = DatabaseConnection(conn_str)
             self.db.connect()
-            self.uploader = FileUploader(site_url)
+            self.uploader = FileUploader(blob_token)
             self.config["database_url"] = conn_str
-            self.config["site_url"] = site_url
+            self.config["blob_token"] = blob_token
             save_config(self.config)
             self.setup_main_screen()
         except Exception as e:
