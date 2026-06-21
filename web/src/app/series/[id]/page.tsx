@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
+import { EpisodePlayer } from "@/components/EpisodePlayer";
 
 interface Props {
   params: { id: string };
@@ -82,52 +83,19 @@ export default async function SeriesDetailPage({ params }: Props) {
 
           {/* Episodes by season */}
           {seasonNumbers.length > 0 && (
-            <div className="mt-8 space-y-6">
-              {seasonNumbers.map((seasonNum) => {
-                const seasonEpisodes = series.episodes.filter(
-                  (ep) => ep.season === seasonNum
-                );
-                return (
-                  <div key={seasonNum}>
-                    <h3 className="mb-3 text-lg font-semibold">
-                      Saison {seasonNum}
-                    </h3>
-                    <div className="space-y-2">
-                      {seasonEpisodes.map((ep) => (
-                        <div
-                          key={ep.id}
-                          className="flex items-center gap-4 rounded-lg border border-gray-800 bg-gray-900 p-3"
-                        >
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-800 text-sm font-medium text-gray-400">
-                            {ep.number}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">
-                              {ep.title || `Épisode ${ep.number}`}
-                            </p>
-                            {ep.duration && (
-                              <p className="text-xs text-gray-400">
-                                {ep.duration}
-                              </p>
-                            )}
-                          </div>
-                          {ep.videoUrl && (
-                            <a
-                              href={ep.videoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="btn-primary text-xs px-3 py-1.5"
-                            >
-                              Regarder
-                            </a>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <EpisodePlayer
+              seasons={seasonNumbers}
+              episodes={series.episodes.map(ep => ({
+                id: ep.id,
+                season: ep.season,
+                number: ep.number,
+                title: ep.title,
+                videoUrl: ep.videoUrl,
+                duration: ep.duration,
+              }))}
+              seriesTitle={series.title}
+              poster={series.posterUrl || undefined}
+            />
           )}
 
           {series.episodes.length === 0 && (

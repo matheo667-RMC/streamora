@@ -93,30 +93,18 @@ export default async function FilmDetailPage({ params }: Props) {
             </p>
           )}
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            {film.videoUrl && (
-              <VideoPlayer videoUrl={film.videoUrl} title={film.title} />
-            )}
+          {/* Video Player */}
+          {film.videoUrl && (
+            <div className="mt-8">
+              <VideoPlayer videoUrl={film.videoUrl} title={film.title} poster={film.posterUrl || undefined} />
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-3">
             {film.videoUrl && (
               <DownloadButton filmId={film.id} />
             )}
           </div>
-
-          {/* Video embed */}
-          {film.videoUrl && (
-            <div className="mt-8">
-              <div className="aspect-video overflow-hidden rounded-xl bg-black">
-                <video
-                  src={film.videoUrl}
-                  controls
-                  className="h-full w-full"
-                  poster={film.posterUrl || undefined}
-                >
-                  Votre navigateur ne supporte pas la lecture vidéo.
-                </video>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

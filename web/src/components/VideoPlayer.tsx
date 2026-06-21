@@ -1,63 +1,298 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 
-export function VideoPlayer({
-  videoUrl,
-  title,
-}: {
+interface Props {
   videoUrl: string;
   title: string;
-}) {
-  const [playing, setPlaying] = useState(false);
+  poster?: string;
+}
 
-  if (playing) {
-    return (
-      <button
-        onClick={() => setPlaying(false)}
-        className="btn-secondary"
-      >
-        <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-        Fermer le lecteur
-      </button>
-    );
-  }
+export function VideoPlayer({ videoUrl, title, poster }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [enhance, setEnhance] = useState(true);
+  const [audioEnhance, setAudioEnhance] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const setupAudio = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || audioCtxRef.current || sourceRef.current) return;
+
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaElementSource(video);
+
+      // Bass boost (low shelf filter)
+      const bass = ctx.createBiquadFilter();
+      bass.type = "lowshelf";
+      bass.frequency.value = 200;
+      bass.gain.value = audioEnhance ? 4 : 0;
+
+      // Voice clarity (peaking filter around 2-4kHz)
+      const clarity = ctx.createBiquadFilter();
+      clarity.type = "peaking";
+      clarity.frequency.value = 3000;
+      clarity.Q.value = 1;
+      clarity.gain.value = audioEnhance ? 3 : 0;
+
+      // Presence (high shelf for crispness)
+      const presence = ctx.createBiquadFilter();
+      presence.type = "highshelf";
+      presence.frequency.value = 8000;
+      presence.gain.value = audioEnhance ? 2 : 0;
+
+      // Compressor (normalize loud/quiet parts)
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -24;
+      compressor.knee.value = 12;
+      compressor.ratio.value = 4;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.25;
+
+      source.connect(bass);
+      bass.connect(clarity);
+      clarity.connect(presence);
+      presence.connect(compressor);
+      compressor.connect(ctx.destination);
+
+      audioCtxRef.current = ctx;
+      sourceRef.current = source;
+    } catch {
+      // Fallback: no audio enhancement
+    }
+  }, [audioEnhance]);
+
+  useEffect(() => {
+    return () => {
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+      }
+    };
+  }, []);
+
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (!audioCtxRef.current) setupAudio();
+
+    if (video.paused) {
+      if (audioCtxRef.current?.state === "suspended") {
+        audioCtxRef.current.resume();
+      }
+      video.play();
+      setIsPlaying(true);
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) setDuration(videoRef.current.duration);
+  };
+
+  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const video = videoRef.current;
+    const bar = e.currentTarget;
+    if (!video || !bar) return;
+    const rect = bar.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    video.currentTime = pct * video.duration;
+  };
+
+  const changeVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    setVolume(v);
+    if (videoRef.current) videoRef.current.volume = v;
+  };
+
+  const toggleFullscreen = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  const skipForward = () => {
+    if (videoRef.current) videoRef.current.currentTime += 10;
+  };
+  const skipBackward = () => {
+    if (videoRef.current) videoRef.current.currentTime -= 10;
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      if (isPlaying) setShowControls(false);
+    }, 3000);
+  };
+
+  const fmt = (s: number) => {
+    if (!s || isNaN(s)) return "0:00";
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = Math.floor(s % 60);
+    if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    return `${m}:${String(sec).padStart(2, "0")}`;
+  };
+
+  const videoFilter = enhance
+    ? "contrast(1.08) saturate(1.15) brightness(1.02)"
+    : "none";
 
   return (
-    <button
-      onClick={() => {
-        setPlaying(true);
-        const videoEl = document.querySelector("video");
-        if (videoEl) {
-          videoEl.scrollIntoView({ behavior: "smooth" });
-          videoEl.play();
-        }
-      }}
-      className="btn-primary"
-      title={`Regarder ${title}`}
+    <div
+      ref={containerRef}
+      className="relative aspect-video w-full overflow-hidden rounded-xl bg-black group"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
     >
-      <svg
-        className="mr-2 h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-      Regarder
-    </button>
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        poster={poster}
+        className="h-full w-full object-contain"
+        style={{ filter: videoFilter }}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        onClick={togglePlay}
+        crossOrigin="anonymous"
+        preload="metadata"
+      />
+
+      {/* Play overlay (when paused and no controls) */}
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer" onClick={togglePlay}>
+          <div className="rounded-full bg-purple-600/90 p-5 shadow-2xl hover:bg-purple-500 transition-colors">
+            <svg className="h-12 w-12 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom controls */}
+      <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-16 pb-3 px-4 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        {/* Progress bar */}
+        <div className="mb-3 cursor-pointer h-1.5 rounded-full bg-white/20 group/bar" onClick={seek}>
+          <div className="relative h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-white shadow-md opacity-0 group-hover/bar:opacity-100 transition-opacity" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Play/Pause */}
+          <button onClick={togglePlay} className="text-white hover:text-purple-400 transition-colors">
+            {isPlaying ? (
+              <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
+            ) : (
+              <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            )}
+          </button>
+
+          {/* Skip backward */}
+          <button onClick={skipBackward} className="text-white/70 hover:text-white transition-colors" title="-10s">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+            </svg>
+          </button>
+
+          {/* Skip forward */}
+          <button onClick={skipForward} className="text-white/70 hover:text-white transition-colors" title="+10s">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
+            </svg>
+          </button>
+
+          {/* Time */}
+          <span className="text-xs text-white/70 tabular-nums min-w-[80px]">
+            {fmt(currentTime)} / {fmt(duration)}
+          </span>
+
+          <div className="flex-1" />
+
+          {/* Volume */}
+          <div className="hidden sm:flex items-center gap-2">
+            <svg className="h-4 w-4 text-white/70" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
+            </svg>
+            <input type="range" min="0" max="1" step="0.05" value={volume} onChange={changeVolume}
+              className="w-20 h-1 rounded-full appearance-none bg-white/20 accent-purple-500" />
+          </div>
+
+          {/* Settings */}
+          <div className="relative">
+            <button onClick={() => setShowSettings(!showSettings)} className="text-white/70 hover:text-white transition-colors" title="Qualite">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+            {showSettings && (
+              <div className="absolute bottom-10 right-0 w-56 rounded-xl border border-white/10 bg-gray-950/95 backdrop-blur-lg p-3 space-y-3 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ameliorations</p>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm">Image HD</span>
+                  <div className={`w-10 h-5 rounded-full transition-colors relative ${enhance ? "bg-purple-600" : "bg-gray-700"}`} onClick={() => setEnhance(!enhance)}>
+                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${enhance ? "translate-x-5" : "translate-x-0.5"}`} />
+                  </div>
+                </label>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm">Audio+</span>
+                  <div className={`w-10 h-5 rounded-full transition-colors relative ${audioEnhance ? "bg-purple-600" : "bg-gray-700"}`} onClick={() => setAudioEnhance(!audioEnhance)}>
+                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${audioEnhance ? "translate-x-5" : "translate-x-0.5"}`} />
+                  </div>
+                </label>
+                <p className="text-[10px] text-gray-600">Image: nettete, contraste, couleurs. Audio: basses, clarte voix.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Fullscreen */}
+          <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors">
+            {isFullscreen ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Enhancement badge */}
+      {enhance && showControls && (
+        <div className="absolute top-3 right-3 rounded-md bg-purple-600/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+          HD+
+        </div>
+      )}
+    </div>
   );
 }
