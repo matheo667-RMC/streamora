@@ -62,7 +62,7 @@ export default async function SeriesDetailPage({ params }: Props) {
           <h1 className="text-3xl font-bold md:text-4xl">{series.title}</h1>
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="rounded-full bg-primary-900/50 px-3 py-1 text-sm text-primary-300">
+            <span className="rounded-full bg-purple-900/50 px-3 py-1 text-sm text-purple-300">
               {series.category}
             </span>
             <span className="text-sm text-gray-400">{series.year}</span>

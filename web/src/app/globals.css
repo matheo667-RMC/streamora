@@ -6,22 +6,47 @@
   body {
     @apply bg-black text-white antialiased;
   }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all;
+    @apply inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 transition-all duration-200 active:scale-95;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white focus:outline-none transition-all;
+    @apply inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white focus:outline-none transition-all duration-200 active:scale-95;
   }
 
   .card {
-    @apply rounded-xl bg-gray-900/50 border border-white/5 overflow-hidden transition-all duration-300 hover:scale-105 hover:border-purple-500/30 hover:shadow-[0_0_20px_rgba(147,51,234,0.15)];
+    @apply rounded-xl bg-gray-900/50 border border-white/5 overflow-hidden transition-all duration-300 hover:scale-[1.03] hover:border-purple-500/30 hover:shadow-[0_0_30px_rgba(147,51,234,0.15)] cursor-pointer;
   }
 
   .input-field {
     @apply block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

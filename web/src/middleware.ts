@@ -4,25 +4,26 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow API routes, static files, profiles page, and auth routes
+  // Allow public routes
   if (
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
-    pathname.startsWith("/profiles") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/register") ||
     pathname === "/favicon.ico" ||
     pathname.startsWith("/logo") ||
-    pathname.startsWith("/uploads/") ||
-    pathname.startsWith("/avatars/")
+    pathname.startsWith("/uploads/")
   ) {
     return NextResponse.next();
   }
 
-  // Check for profile cookie
-  const profileId = request.cookies.get("streamora-profile")?.value;
-  if (!profileId) {
-    return NextResponse.redirect(new URL("/profiles", request.url));
+  // Check for auth session cookie (NextAuth)
+  const sessionToken =
+    request.cookies.get("authjs.session-token")?.value ||
+    request.cookies.get("__Secure-authjs.session-token")?.value;
+
+  if (!sessionToken) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();

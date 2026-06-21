@@ -470,15 +470,15 @@ class StreamoraAdmin:
                     entry.insert(0, val)
                 fields[key] = entry
 
-            # ─── VIDEO FILE ───
-            ctk.CTkLabel(scroll, text="Fichier vidéo", font=("", 13, "bold")).pack(anchor="w", pady=(15, 2))
+            # ─── VIDEO ───
+            ctk.CTkLabel(scroll, text="Vidéo (fichier ou URL)", font=("", 13, "bold")).pack(anchor="w", pady=(15, 2))
 
             video_frame = ctk.CTkFrame(scroll, fg_color="transparent")
             video_frame.pack(fill="x")
 
             video_label = ctk.CTkLabel(video_frame, text=video_url.get() or "Aucun fichier sélectionné",
-                                       font=("", 11), text_color="gray", wraplength=350)
-            video_label.pack(side="left", padx=(0, 10))
+                                       font=("", 11), text_color="gray", wraplength=300)
+            video_label.pack(side="left", padx=(0, 5))
 
             def pick_video():
                 path = filedialog.askopenfilename(
@@ -487,20 +487,27 @@ class StreamoraAdmin:
                 )
                 if path:
                     video_path.set(path)
+                    video_url_entry.delete(0, "end")
                     video_label.configure(text=f"📁 {os.path.basename(path)}")
 
-            ctk.CTkButton(video_frame, text="📂 Choisir", command=pick_video,
-                         fg_color="#333355", hover_color="#444466", width=100).pack(side="right")
+            ctk.CTkButton(video_frame, text="📂 Fichier", command=pick_video,
+                         fg_color="#333355", hover_color="#444466", width=80).pack(side="right")
 
-            # ─── POSTER IMAGE ───
-            ctk.CTkLabel(scroll, text="Image / Affiche", font=("", 13, "bold")).pack(anchor="w", pady=(15, 2))
+            ctk.CTkLabel(scroll, text="Ou coller une URL vidéo (Google Drive, etc.) :", font=("", 11), text_color="gray").pack(anchor="w", pady=(5, 2))
+            video_url_entry = ctk.CTkEntry(scroll, width=450, placeholder_text="https://...")
+            video_url_entry.pack(fill="x")
+            if video_url.get():
+                video_url_entry.insert(0, video_url.get())
+
+            # ─── POSTER ───
+            ctk.CTkLabel(scroll, text="Image / Affiche (fichier ou URL)", font=("", 13, "bold")).pack(anchor="w", pady=(15, 2))
 
             poster_frame = ctk.CTkFrame(scroll, fg_color="transparent")
             poster_frame.pack(fill="x")
 
             poster_label = ctk.CTkLabel(poster_frame, text=poster_url.get() or "Aucune image sélectionnée",
-                                        font=("", 11), text_color="gray", wraplength=350)
-            poster_label.pack(side="left", padx=(0, 10))
+                                        font=("", 11), text_color="gray", wraplength=300)
+            poster_label.pack(side="left", padx=(0, 5))
 
             def pick_poster():
                 path = filedialog.askopenfilename(
@@ -509,10 +516,17 @@ class StreamoraAdmin:
                 )
                 if path:
                     poster_path.set(path)
+                    poster_url_entry.delete(0, "end")
                     poster_label.configure(text=f"🖼️ {os.path.basename(path)}")
 
-            ctk.CTkButton(poster_frame, text="📂 Choisir", command=pick_poster,
-                         fg_color="#333355", hover_color="#444466", width=100).pack(side="right")
+            ctk.CTkButton(poster_frame, text="📂 Fichier", command=pick_poster,
+                         fg_color="#333355", hover_color="#444466", width=80).pack(side="right")
+
+            ctk.CTkLabel(scroll, text="Ou coller une URL image :", font=("", 11), text_color="gray").pack(anchor="w", pady=(5, 2))
+            poster_url_entry = ctk.CTkEntry(scroll, width=450, placeholder_text="https://...")
+            poster_url_entry.pack(fill="x")
+            if poster_url.get():
+                poster_url_entry.insert(0, poster_url.get())
 
             # Featured checkbox
             featured_var = tk.BooleanVar(value=bool(film.get("featured")) if film else False)
@@ -539,6 +553,15 @@ class StreamoraAdmin:
                 def do_save():
                     v_url = video_url.get()
                     p_url = poster_url.get()
+
+                    # Use pasted URL if provided (takes priority over empty file selection)
+                    pasted_video = video_url_entry.get().strip()
+                    pasted_poster = poster_url_entry.get().strip()
+
+                    if pasted_video and not video_path.get():
+                        v_url = pasted_video
+                    if pasted_poster and not poster_path.get():
+                        p_url = pasted_poster
 
                     # Upload video if new file selected
                     if video_path.get():
