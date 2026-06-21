@@ -84,20 +84,24 @@ class FileUploader:
 
     def __init__(self, blob_token):
         self.blob_token = blob_token
+        self.last_error = ""
 
     def upload(self, filepath, callback=None):
         """Upload a file directly to Vercel Blob and return the URL."""
         filename = os.path.basename(filepath)
         filesize = os.path.getsize(filepath)
         size_mb = filesize // (1024 * 1024)
+        self.last_error = ""
 
         if callback:
             callback(f"Upload de {filename} ({size_mb} MB)...")
 
-        try:
-            # Clean filename for URL
-            safe_name = f"{int(datetime.now().timestamp())}-{filename}"
+        # Remove special characters from filename for URL safety
+        import re
+        clean_name = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
+        safe_name = f"{int(datetime.now().timestamp())}-{clean_name}"
 
+        try:
             with open(filepath, "rb") as f:
                 resp = requests.put(
                     f"https://blob.vercel-storage.com/{safe_name}",
@@ -107,7 +111,7 @@ class FileUploader:
                         "content-type": "application/octet-stream",
                     },
                     data=f,
-                    timeout=1800,
+                    timeout=3600,
                 )
 
             if resp.status_code == 200:
@@ -117,12 +121,29 @@ class FileUploader:
                     callback(f"Upload terminé : {filename}")
                 return url
             else:
+                try:
+                    err_data = resp.json()
+                    err_msg = err_data.get("error", {}).get("message", resp.text[:300])
+                except Exception:
+                    err_msg = resp.text[:300]
+                self.last_error = f"Code {resp.status_code}: {err_msg}"
                 if callback:
-                    callback(f"Erreur upload : {resp.status_code} - {resp.text[:200]}")
+                    callback(f"Erreur: {self.last_error}")
                 return ""
-        except Exception as e:
+        except requests.exceptions.ConnectionError:
+            self.last_error = "Impossible de se connecter à Vercel Blob. Vérifie ta connexion internet."
             if callback:
-                callback(f"Erreur : {str(e)}")
+                callback(self.last_error)
+            return ""
+        except requests.exceptions.Timeout:
+            self.last_error = "Upload trop long (timeout). Le fichier est peut-être trop gros."
+            if callback:
+                callback(self.last_error)
+            return ""
+        except Exception as e:
+            self.last_error = str(e)
+            if callback:
+                callback(f"Erreur : {self.last_error}")
             return ""
 
 
@@ -525,7 +546,8 @@ class StreamoraAdmin:
                         v_url = self.uploader.upload(video_path.get(),
                                                      callback=lambda m: self.root.after(0, self.set_status, m))
                         if not v_url:
-                            self.root.after(0, lambda: messagebox.showerror("Erreur", "Échec de l'upload vidéo"))
+                            err = self.uploader.last_error or "Erreur inconnue"
+                            self.root.after(0, lambda e=err: messagebox.showerror("Échec upload vidéo", e))
                             self.root.after(0, save_btn.configure, {"state": "normal", "text": "Enregistrer"})
                             return
 
@@ -535,7 +557,8 @@ class StreamoraAdmin:
                         p_url = self.uploader.upload(poster_path.get(),
                                                      callback=lambda m: self.root.after(0, self.set_status, m))
                         if not p_url:
-                            self.root.after(0, lambda: messagebox.showerror("Erreur", "Échec de l'upload image"))
+                            err = self.uploader.last_error or "Erreur inconnue"
+                            self.root.after(0, lambda e=err: messagebox.showerror("Échec upload image", e))
                             self.root.after(0, save_btn.configure, {"state": "normal", "text": "Enregistrer"})
                             return
 
