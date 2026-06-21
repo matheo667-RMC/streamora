@@ -27,8 +27,7 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const { directUrl, driveFileId } = useMemo(() => getStreamableUrl(videoUrl), [videoUrl]);
-  const useIframeEmbed = driveFileId !== null && videoError;
-  const useIframeDirectly = driveFileId !== null;
+  const useIframeFallback = driveFileId !== null && videoError;
 
   const setupAudio = useCallback(() => {
     const video = videoRef.current;
@@ -167,8 +166,8 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
     ? "contrast(1.08) saturate(1.15) brightness(1.02)"
     : "none";
 
-  // For Google Drive links, use iframe embed directly (most reliable)
-  if (useIframeDirectly && driveFileId) {
+  // Fallback to Google Drive iframe if proxy fails
+  if (useIframeFallback && driveFileId) {
     return (
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
         <iframe
@@ -203,7 +202,6 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
         onEnded={() => setIsPlaying(false)}
         onError={() => setVideoError(true)}
         onClick={togglePlay}
-        crossOrigin="anonymous"
         preload="metadata"
       />
 
