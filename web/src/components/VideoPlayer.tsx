@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { getStreamableUrl, getDriveEmbedUrl } from "@/lib/video-url";
 
 interface Props {
   videoUrl: string;
@@ -22,7 +23,12 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
   const [enhance, setEnhance] = useState(true);
   const [audioEnhance, setAudioEnhance] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const { directUrl, driveFileId } = useMemo(() => getStreamableUrl(videoUrl), [videoUrl]);
+  const useIframeEmbed = driveFileId !== null && videoError;
+  const useIframeDirectly = driveFileId !== null;
 
   const setupAudio = useCallback(() => {
     const video = videoRef.current;
@@ -161,6 +167,22 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
     ? "contrast(1.08) saturate(1.15) brightness(1.02)"
     : "none";
 
+  // For Google Drive links, use iframe embed directly (most reliable)
+  if (useIframeDirectly && driveFileId) {
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+        <iframe
+          src={getDriveEmbedUrl(driveFileId)}
+          className="h-full w-full"
+          allow="autoplay; encrypted-media; fullscreen"
+          allowFullScreen
+          title={title}
+          style={{ border: "none" }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -170,7 +192,7 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
     >
       <video
         ref={videoRef}
-        src={videoUrl}
+        src={directUrl}
         poster={poster}
         className="h-full w-full object-contain"
         style={{ filter: videoFilter }}
@@ -179,6 +201,7 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
+        onError={() => setVideoError(true)}
         onClick={togglePlay}
         crossOrigin="anonymous"
         preload="metadata"
