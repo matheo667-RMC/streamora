@@ -71,6 +71,32 @@ export default function AdminPage() {
 
   const [saving, setSaving] = useState(false);
 
+  // Poster search
+  const [posterResults, setPosterResults] = useState<{ id: number; title: string; year: string; posterUrl: string; posterUrlHD: string; overview: string }[]>([]);
+  const [posterSearching, setPosterSearching] = useState(false);
+  const [posterTarget, setPosterTarget] = useState<"film" | "series">("film");
+
+  async function searchPoster(title: string, type: "film" | "series") {
+    if (!title.trim()) return;
+    setPosterSearching(true);
+    setPosterTarget(type);
+    try {
+      const res = await fetch(`/api/admin/poster-search?q=${encodeURIComponent(title)}&type=${type === "series" ? "series" : "movie"}`);
+      const data = await res.json();
+      setPosterResults(data.results || []);
+    } catch { setPosterResults([]); }
+    setPosterSearching(false);
+  }
+
+  function selectPoster(url: string, description?: string) {
+    if (posterTarget === "film") {
+      setFilmForm(f => ({ ...f, posterUrl: url, description: f.description || description || "" }));
+    } else {
+      setSeriesForm(f => ({ ...f, posterUrl: url, description: f.description || description || "" }));
+    }
+    setPosterResults([]);
+  }
+
   // Maintenance
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
@@ -398,7 +424,28 @@ export default function AdminPage() {
             </div>
             <Field label="Duree (ex: 1h30)" value={filmForm.duration} onChange={v => setFilmForm({ ...filmForm, duration: v })} />
             <Field label="URL Video (lien direct ou Google Drive)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} placeholder="https://..." />
-            <Field label="URL Image / Affiche" value={filmForm.posterUrl} onChange={v => setFilmForm({ ...filmForm, posterUrl: v })} placeholder="https://..." />
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">Affiche du film</label>
+              <div className="flex gap-2">
+                <input type="text" value={filmForm.posterUrl} onChange={e => setFilmForm({ ...filmForm, posterUrl: e.target.value })} placeholder="URL de l'affiche ou chercher ci-dessous" className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors" />
+                <button type="button" onClick={() => searchPoster(filmForm.title, "film")} disabled={posterSearching || !filmForm.title.trim()} className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 whitespace-nowrap transition-colors">
+                  {posterSearching ? "..." : "Chercher HD"}
+                </button>
+              </div>
+              {filmForm.posterUrl && (
+                <div className="mt-2 flex justify-center"><img src={filmForm.posterUrl} alt="Preview" className="h-32 rounded-lg object-cover" /></div>
+              )}
+              {posterResults.length > 0 && posterTarget === "film" && (
+                <div className="mt-2 grid grid-cols-4 gap-2 max-h-60 overflow-y-auto rounded-lg border border-white/10 bg-black/50 p-2">
+                  {posterResults.map(r => (
+                    <button key={r.id} type="button" onClick={() => selectPoster(r.posterUrlHD, r.overview)} className="group relative rounded-lg overflow-hidden border border-transparent hover:border-purple-500 transition-colors">
+                      <img src={r.posterUrl} alt={r.title} className="w-full aspect-[2/3] object-cover" />
+                      <div className="absolute inset-x-0 bottom-0 bg-black/80 p-1 text-[10px] text-center truncate">{r.title} ({r.year})</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={filmForm.featured} onChange={e => setFilmForm({ ...filmForm, featured: e.target.checked })} className="rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500" />
               <span className="text-sm">En vedette (hero sur la page d&apos;accueil)</span>
@@ -420,7 +467,28 @@ export default function AdminPage() {
               <Field label="Categorie" value={seriesForm.category} onChange={v => setSeriesForm({ ...seriesForm, category: v })} />
               <Field label="Annee" value={String(seriesForm.year)} onChange={v => setSeriesForm({ ...seriesForm, year: Number(v) || new Date().getFullYear() })} />
             </div>
-            <Field label="URL Image / Affiche" value={seriesForm.posterUrl} onChange={v => setSeriesForm({ ...seriesForm, posterUrl: v })} placeholder="https://..." />
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">Affiche de la serie</label>
+              <div className="flex gap-2">
+                <input type="text" value={seriesForm.posterUrl} onChange={e => setSeriesForm({ ...seriesForm, posterUrl: e.target.value })} placeholder="URL de l'affiche ou chercher ci-dessous" className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors" />
+                <button type="button" onClick={() => searchPoster(seriesForm.title, "series")} disabled={posterSearching || !seriesForm.title.trim()} className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 whitespace-nowrap transition-colors">
+                  {posterSearching ? "..." : "Chercher HD"}
+                </button>
+              </div>
+              {seriesForm.posterUrl && (
+                <div className="mt-2 flex justify-center"><img src={seriesForm.posterUrl} alt="Preview" className="h-32 rounded-lg object-cover" /></div>
+              )}
+              {posterResults.length > 0 && posterTarget === "series" && (
+                <div className="mt-2 grid grid-cols-4 gap-2 max-h-60 overflow-y-auto rounded-lg border border-white/10 bg-black/50 p-2">
+                  {posterResults.map(r => (
+                    <button key={r.id} type="button" onClick={() => selectPoster(r.posterUrlHD, r.overview)} className="group relative rounded-lg overflow-hidden border border-transparent hover:border-purple-500 transition-colors">
+                      <img src={r.posterUrl} alt={r.title} className="w-full aspect-[2/3] object-cover" />
+                      <div className="absolute inset-x-0 bottom-0 bg-black/80 p-1 text-[10px] text-center truncate">{r.title} ({r.year})</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={seriesForm.featured} onChange={e => setSeriesForm({ ...seriesForm, featured: e.target.checked })} className="rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500" />
               <span className="text-sm">En vedette</span>
