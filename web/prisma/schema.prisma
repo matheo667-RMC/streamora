@@ -42,6 +42,8 @@ model User {
   image         String?
   password      String?
   role          String    @default("user")
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean  @default(false)
   accounts      Account[]
   sessions      Session[]
   downloads     Download[]
