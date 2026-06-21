@@ -85,6 +85,9 @@ export function Navbar() {
                       Admin
                     </Link>
                   )}
+                  <Link href="/account" className="block rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
+                    Mon compte
+                  </Link>
                   <button
                     onClick={() => signOut({ callbackUrl: "/login" })}
                     className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10"
