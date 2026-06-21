@@ -24,6 +24,7 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
   const [audioEnhance, setAudioEnhance] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [loading, setLoading] = useState(true);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const { directUrl, driveFileId } = useMemo(() => getStreamableUrl(videoUrl), [videoUrl]);
@@ -196,7 +197,10 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
         className="h-full w-full object-contain"
         style={{ filter: videoFilter }}
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
+        onLoadedMetadata={() => { handleLoadedMetadata(); setLoading(false); }}
+        onCanPlay={() => setLoading(false)}
+        onWaiting={() => setLoading(true)}
+        onPlaying={() => setLoading(false)}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
@@ -204,6 +208,13 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
         onClick={togglePlay}
         preload="metadata"
       />
+
+      {/* Loading spinner */}
+      {loading && isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+        </div>
+      )}
 
       {/* Play overlay (when paused and no controls) */}
       {!isPlaying && (
