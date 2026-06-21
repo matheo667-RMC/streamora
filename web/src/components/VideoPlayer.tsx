@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { getStreamableUrl, getDriveEmbedUrl } from "@/lib/video-url";
+import { extractDriveFileId, getDriveEmbedUrl } from "@/lib/video-url";
 
 interface Props {
   videoUrl: string;
@@ -25,10 +25,30 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
   const [showSettings, setShowSettings] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const { directUrl, driveFileId } = useMemo(() => getStreamableUrl(videoUrl), [videoUrl]);
+  const driveFileId = useMemo(() => extractDriveFileId(videoUrl), [videoUrl]);
   const useIframeFallback = driveFileId !== null && videoError;
+
+  // Resolve Google Drive URL on mount
+  useEffect(() => {
+    if (!driveFileId) {
+      setResolvedUrl(videoUrl);
+      return;
+    }
+    setLoading(true);
+    fetch(`/api/video-proxy?id=${driveFileId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.url) {
+          setResolvedUrl(data.url);
+        } else {
+          setVideoError(true);
+        }
+      })
+      .catch(() => setVideoError(true));
+  }, [videoUrl, driveFileId]);
 
   const setupAudio = useCallback(() => {
     const video = videoRef.current;
@@ -167,7 +187,7 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
     ? "contrast(1.08) saturate(1.15) brightness(1.02)"
     : "none";
 
-  // Fallback to Google Drive iframe if proxy fails
+  // Fallback to Google Drive iframe if direct streaming fails
   if (useIframeFallback && driveFileId) {
     return (
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
@@ -183,6 +203,18 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
     );
   }
 
+  // Show loading while resolving Google Drive URL
+  if (!resolvedUrl) {
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-12 w-12 mx-auto animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+          <p className="mt-3 text-sm text-gray-400">Chargement de la video...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -192,7 +224,7 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
     >
       <video
         ref={videoRef}
-        src={directUrl}
+        src={resolvedUrl}
         poster={poster}
         className="h-full w-full object-contain"
         style={{ filter: videoFilter }}
@@ -206,6 +238,7 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
         onEnded={() => setIsPlaying(false)}
         onError={() => setVideoError(true)}
         onClick={togglePlay}
+        crossOrigin="anonymous"
         preload="metadata"
       />
 
