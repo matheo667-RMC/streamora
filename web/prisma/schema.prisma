@@ -118,3 +118,9 @@ model Download {
   profile   Profile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 }
+
+model SiteSettings {
+  id              String  @id @default("main")
+  maintenanceMode Boolean @default(false)
+  maintenanceMsg  String  @default("Streamora est en maintenance. Nous revenons bientôt !")
+}

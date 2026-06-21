@@ -71,11 +71,16 @@ export default function AdminPage() {
 
   const [saving, setSaving] = useState(false);
 
+  // Maintenance
+  const [maintenance, setMaintenance] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+
   const loadData = useCallback(() => {
     fetch("/api/admin/stats").then(r => r.json()).then(setStats).catch(() => {});
     fetch("/api/films").then(r => r.json()).then(setFilms).catch(() => {});
     fetch("/api/series").then(r => r.json()).then(setSeriesList).catch(() => {});
     fetch("/api/admin/users").then(r => r.json()).then(d => { if (Array.isArray(d)) setUsers(d); }).catch(() => {});
+    fetch("/api/admin/maintenance").then(r => r.json()).then(d => setMaintenance(d.maintenanceMode || false)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -116,8 +121,8 @@ export default function AdminPage() {
             {pinError && <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">{pinError}</div>}
             <input type="password" value={adminPin} onChange={e => setAdminPin(e.target.value)} placeholder="Mot de passe admin"
               className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors mb-4 text-center text-lg tracking-widest"
-              onKeyDown={e => { if (e.key === "Enter") { adminPin === ADMIN_PASSWORD ? setAdminUnlocked(true) : setPinError("Mot de passe incorrect"); } }} />
-            <button onClick={() => { adminPin === ADMIN_PASSWORD ? setAdminUnlocked(true) : setPinError("Mot de passe incorrect"); }} className="w-full btn-primary py-3">Deverrouiller</button>
+              onKeyDown={e => { if (e.key === "Enter") { if (adminPin === ADMIN_PASSWORD) { setAdminUnlocked(true); document.cookie = "streamora-admin=true; path=/; max-age=86400"; } else { setPinError("Mot de passe incorrect"); } } }} />
+            <button onClick={() => { if (adminPin === ADMIN_PASSWORD) { setAdminUnlocked(true); document.cookie = "streamora-admin=true; path=/; max-age=86400"; } else { setPinError("Mot de passe incorrect"); } }} className="w-full btn-primary py-3">Deverrouiller</button>
           </div>
         </div>
       </>
@@ -244,19 +249,60 @@ export default function AdminPage() {
 
           {/* ── Dashboard ── */}
           {tab === "dashboard" && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {[
-                { label: "Films", val: stats.films, color: "from-purple-600 to-purple-800" },
-                { label: "Series", val: stats.series, color: "from-pink-600 to-pink-800" },
-                { label: "Episodes", val: stats.episodes, color: "from-blue-600 to-blue-800" },
-                { label: "Downloads", val: stats.downloads, color: "from-green-600 to-green-800" },
-                { label: "Utilisateurs", val: stats.users, color: "from-yellow-600 to-yellow-800" },
-              ].map(s => (
-                <div key={s.label} className={`rounded-xl bg-gradient-to-br ${s.color} p-5 text-center`}>
-                  <div className="text-3xl font-bold">{s.val || 0}</div>
-                  <div className="text-xs text-white/70 mt-1">{s.label}</div>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {[
+                  { label: "Films", val: stats.films, color: "from-purple-600 to-purple-800" },
+                  { label: "Series", val: stats.series, color: "from-pink-600 to-pink-800" },
+                  { label: "Episodes", val: stats.episodes, color: "from-blue-600 to-blue-800" },
+                  { label: "Downloads", val: stats.downloads, color: "from-green-600 to-green-800" },
+                  { label: "Utilisateurs", val: stats.users, color: "from-yellow-600 to-yellow-800" },
+                ].map(s => (
+                  <div key={s.label} className={`rounded-xl bg-gradient-to-br ${s.color} p-5 text-center`}>
+                    <div className="text-3xl font-bold">{s.val || 0}</div>
+                    <div className="text-xs text-white/70 mt-1">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Maintenance toggle */}
+              <div className={`rounded-2xl border p-6 ${maintenance ? "border-red-500/30 bg-red-500/5" : "border-white/10 bg-gray-900/50"}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      {maintenance ? <span className="text-red-400">&#x1f6a7;</span> : <span className="text-green-400">&#x2705;</span>}
+                      Mode Maintenance
+                    </h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {maintenance
+                        ? "Le site est en maintenance. Seul toi peux y accéder."
+                        : "Le site est accessible à tout le monde."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setMaintenanceLoading(true);
+                      try {
+                        await fetch("/api/admin/maintenance", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ maintenanceMode: !maintenance }),
+                        });
+                        setMaintenance(!maintenance);
+                      } catch {}
+                      setMaintenanceLoading(false);
+                    }}
+                    disabled={maintenanceLoading}
+                    className={`rounded-xl px-6 py-3 text-sm font-semibold transition-all ${
+                      maintenance
+                        ? "bg-green-600 hover:bg-green-500 text-white"
+                        : "bg-red-600 hover:bg-red-500 text-white"
+                    } disabled:opacity-50`}
+                  >
+                    {maintenanceLoading ? "..." : maintenance ? "Desactiver la maintenance" : "Activer la maintenance"}
+                  </button>
                 </div>
-              ))}
+              </div>
             </div>
           )}
 
