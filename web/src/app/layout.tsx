@@ -4,7 +4,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Streamora - Films & Séries en Streaming",
-  description: "Regardez et téléchargez vos films et séries préférés sur Streamora",
+  description: "Regardez vos films et séries préférés en streaming HD sur Streamora",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

@@ -10,11 +10,11 @@ export default async function HomePage() {
   type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
   let featuredFilms: FilmWithCount[] = [];
   let latestFilms: FilmWithCount[] = [];
-  let popularFilms: FilmWithCount[] = [];
+
   let latestSeries: SeriesWithCount[] = [];
 
   try {
-    const [f1, f2, f3, s1] = await Promise.all([
+    const [f1, f2, s1] = await Promise.all([
       prisma.film.findMany({
         where: { featured: true },
         take: 1,
@@ -26,11 +26,6 @@ export default async function HomePage() {
         orderBy: { createdAt: "desc" },
         include: { _count: { select: { downloads: true } } },
       }),
-      prisma.film.findMany({
-        take: 20,
-        orderBy: { downloads: { _count: "desc" } },
-        include: { _count: { select: { downloads: true } } },
-      }),
       prisma.series.findMany({
         take: 20,
         orderBy: { createdAt: "desc" },
@@ -39,7 +34,6 @@ export default async function HomePage() {
     ]);
     featuredFilms = f1 as FilmWithCount[];
     latestFilms = f2 as FilmWithCount[];
-    popularFilms = f3 as FilmWithCount[];
     latestSeries = s1 as SeriesWithCount[];
   } catch {
     // Database not available yet
