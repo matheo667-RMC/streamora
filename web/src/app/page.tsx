@@ -118,14 +118,7 @@ export default async function HomePage() {
             </ContentRow>
           )}
 
-          {/* Popular Films */}
-          {popularFilms.length > 0 && popularFilms.some(f => f._count.downloads > 0) && (
-            <ContentRow title="Les plus populaires" href="/films">
-              {popularFilms.map((film) => (
-                <FilmCard key={film.id} film={film} />
-              ))}
-            </ContentRow>
-          )}
+
 
           {/* Series */}
           {latestSeries.length > 0 && (
