@@ -1,7 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Discord from "next-auth/providers/discord";
-import Facebook from "next-auth/providers/facebook";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
@@ -13,11 +12,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Discord({
       clientId: process.env.DISCORD_CLIENT_ID ?? "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
-      allowDangerousEmailAccountLinking: true,
-    }),
-    Facebook({
-      clientId: process.env.FACEBOOK_CLIENT_ID ?? "",
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET ?? "",
       allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
