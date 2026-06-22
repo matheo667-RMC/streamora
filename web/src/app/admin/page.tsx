@@ -202,12 +202,22 @@ export default function AdminPage() {
     const body = { ...seriesForm, year: Number(seriesForm.year) };
     if (editingSeries) {
       await fetch(`/api/series/${editingSeries.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      setSaving(false);
+      setSeriesModal(false);
+      loadData();
     } else {
-      await fetch("/api/series", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch("/api/series", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const created = await res.json();
+      setSaving(false);
+      setSeriesModal(false);
+      loadData();
+      // Auto-open episodes modal after creating a new series
+      if (created?.id) {
+        setTimeout(() => {
+          openManageEpisodes(created);
+        }, 300);
+      }
     }
-    setSaving(false);
-    setSeriesModal(false);
-    loadData();
   }
   async function deleteSeries(id: string, title: string) {
     if (!confirm(`Supprimer la serie "${title}" et tous ses episodes ?`)) return;
@@ -504,34 +514,53 @@ export default function AdminPage() {
       {episodeModal && managingSeries && (
         <Modal title={`Episodes — ${managingSeries.title}`} onClose={() => setEpisodeModal(false)} wide>
           <div className="space-y-4">
-            {/* Existing episodes */}
+            {/* Help text */}
+            <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-3">
+              <p className="text-sm text-purple-300">Pour ajouter un episode, remplis le formulaire ci-dessous avec le lien video (Google Drive ou lien direct). L&apos;episode sera automatiquement ajoute a la serie.</p>
+            </div>
+
+            {/* Existing episodes grouped by season */}
             {managingSeries.episodes && managingSeries.episodes.length > 0 && (
-              <div className="space-y-1 max-h-60 overflow-y-auto">
-                {managingSeries.episodes.map(ep => (
-                  <div key={ep.id} className="flex items-center gap-3 rounded-lg bg-gray-800/50 p-2.5">
-                    <span className="text-xs font-mono text-purple-400 w-14 flex-shrink-0">S{String(ep.season).padStart(2, "0")}E{String(ep.number).padStart(2, "0")}</span>
-                    <span className="flex-1 text-sm truncate">{ep.title || `Episode ${ep.number}`}</span>
-                    {ep.videoUrl && <span className="text-green-400 text-xs">&#x2714;</span>}
-                    <button onClick={() => deleteEpisode(ep.id)} className="text-xs text-red-400 hover:text-red-300">Suppr.</button>
+              <div className="space-y-3 max-h-72 overflow-y-auto">
+                {[...new Set(managingSeries.episodes.map(ep => ep.season))].sort((a, b) => a - b).map(season => (
+                  <div key={season}>
+                    <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Saison {season}</p>
+                    <div className="space-y-1">
+                      {managingSeries.episodes!.filter(ep => ep.season === season).sort((a, b) => a.number - b.number).map(ep => (
+                        <div key={ep.id} className="flex items-center gap-3 rounded-lg bg-gray-800/50 p-2.5 group hover:bg-gray-800 transition-colors">
+                          <span className="text-xs font-mono text-gray-400 w-8 flex-shrink-0">E{String(ep.number).padStart(2, "0")}</span>
+                          <span className="flex-1 text-sm truncate">{ep.title || `Episode ${ep.number}`}</span>
+                          {ep.duration && <span className="text-xs text-gray-500">{ep.duration}</span>}
+                          {ep.videoUrl ? <span className="text-green-400 text-xs">&#x2714; Video</span> : <span className="text-yellow-400 text-xs">Pas de video</span>}
+                          <button onClick={() => deleteEpisode(ep.id)} className="text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity">Suppr.</button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
             {(!managingSeries.episodes || managingSeries.episodes.length === 0) && (
-              <p className="text-center text-gray-500 text-sm py-4">Aucun episode.</p>
+              <div className="text-center py-6 border border-dashed border-white/10 rounded-lg">
+                <p className="text-gray-500 text-sm">Aucun episode pour le moment.</p>
+                <p className="text-gray-600 text-xs mt-1">Ajoute ton premier episode ci-dessous !</p>
+              </div>
             )}
 
             <div className="border-t border-white/10 pt-4">
-              <p className="text-sm font-medium mb-3">Ajouter un episode</p>
-              <div className="grid grid-cols-2 gap-3">
+              <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-[10px] text-white">+</span>
+                Ajouter un episode
+              </p>
+              <div className="grid grid-cols-3 gap-3">
                 <Field label="Saison" value={String(episodeForm.season)} onChange={v => setEpisodeForm({ ...episodeForm, season: Number(v) || 1 })} />
-                <Field label="Numero" value={String(episodeForm.number)} onChange={v => setEpisodeForm({ ...episodeForm, number: Number(v) || 1 })} />
+                <Field label="Episode n°" value={String(episodeForm.number)} onChange={v => setEpisodeForm({ ...episodeForm, number: Number(v) || 1 })} />
+                <Field label="Duree (ex: 45min)" value={episodeForm.duration} onChange={v => setEpisodeForm({ ...episodeForm, duration: v })} />
               </div>
-              <Field label="Titre" value={episodeForm.title} onChange={v => setEpisodeForm({ ...episodeForm, title: v })} />
-              <Field label="URL Video" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} placeholder="https://..." />
-              <Field label="Duree" value={episodeForm.duration} onChange={v => setEpisodeForm({ ...episodeForm, duration: v })} />
-              <button onClick={addEpisode} disabled={saving} className="w-full btn-primary py-2.5 mt-2">
-                {saving ? "Ajout..." : "Ajouter l'episode"}
+              <Field label="Titre de l'episode" value={episodeForm.title} onChange={v => setEpisodeForm({ ...episodeForm, title: v })} placeholder="Ex: L'arrivee de Luffy" />
+              <Field label="URL Video (Google Drive ou lien direct)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} placeholder="https://drive.google.com/file/d/.../view" />
+              <button onClick={addEpisode} disabled={saving || !episodeForm.videoUrl.trim()} className="w-full btn-primary py-2.5 mt-3">
+                {saving ? "Ajout en cours..." : "Ajouter l'episode"}
               </button>
             </div>
           </div>
