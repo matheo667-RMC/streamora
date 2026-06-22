@@ -31,23 +31,15 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
   const driveFileId = useMemo(() => extractDriveFileId(videoUrl), [videoUrl]);
   const useIframeFallback = driveFileId !== null && videoError;
 
-  // Resolve Google Drive URL on mount
+  // Set video URL - use proxy for Google Drive files (streams at full quality)
   useEffect(() => {
     if (!driveFileId) {
       setResolvedUrl(videoUrl);
-      return;
+    } else {
+      // Use our streaming proxy endpoint directly as video source
+      setResolvedUrl(`/api/video-proxy?id=${driveFileId}`);
     }
-    setLoading(true);
-    fetch(`/api/video-proxy?id=${driveFileId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.url) {
-          setResolvedUrl(data.url);
-        } else {
-          setVideoError(true);
-        }
-      })
-      .catch(() => setVideoError(true));
+    setLoading(false);
   }, [videoUrl, driveFileId]);
 
   const setupAudio = useCallback(() => {
@@ -238,7 +230,6 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
         onEnded={() => setIsPlaying(false)}
         onError={() => setVideoError(true)}
         onClick={togglePlay}
-        crossOrigin="anonymous"
         preload="metadata"
       />
 
