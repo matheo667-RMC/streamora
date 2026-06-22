@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   providers: [
     Discord({
       clientId: process.env.DISCORD_CLIENT_ID ?? "",
