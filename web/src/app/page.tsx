@@ -2,25 +2,18 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
+import { HeroBanner } from "@/components/HeroBanner";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   type FilmWithCount = Awaited<ReturnType<typeof prisma.film.findMany>>[number] & { _count: { downloads: number } };
   type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
-  let featuredFilms: FilmWithCount[] = [];
   let latestFilms: FilmWithCount[] = [];
-
   let latestSeries: SeriesWithCount[] = [];
 
   try {
-    const [f1, f2, s1] = await Promise.all([
-      prisma.film.findMany({
-        where: { featured: true },
-        take: 1,
-        orderBy: { createdAt: "desc" },
-        include: { _count: { select: { downloads: true } } },
-      }),
+    const [f2, s1] = await Promise.all([
       prisma.film.findMany({
         take: 20,
         orderBy: { createdAt: "desc" },
@@ -32,75 +25,47 @@ export default async function HomePage() {
         include: { _count: { select: { episodes: true } } },
       }),
     ]);
-    featuredFilms = f1 as FilmWithCount[];
     latestFilms = f2 as FilmWithCount[];
     latestSeries = s1 as SeriesWithCount[];
   } catch {
     // Database not available yet
   }
 
-  const hero = featuredFilms[0] || latestFilms[0] || null;
+  // Build hero items from all films and series that have posters
+  const heroItems = [
+    ...latestFilms
+      .filter((f) => f.posterUrl)
+      .slice(0, 5)
+      .map((f) => ({
+        id: f.id,
+        title: f.title,
+        description: f.description,
+        category: f.category,
+        posterUrl: f.posterUrl,
+        year: f.year,
+        duration: f.duration,
+        type: "film" as const,
+      })),
+    ...latestSeries
+      .filter((s) => s.posterUrl)
+      .slice(0, 3)
+      .map((s) => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        category: s.category,
+        posterUrl: s.posterUrl,
+        year: s.year,
+        type: "series" as const,
+      })),
+  ];
 
   return (
     <>
       <Navbar />
       <div className="min-h-screen bg-black">
-        {/* Hero Section */}
-        <section className="relative h-[85vh] sm:h-[80vh] w-full overflow-hidden">
-          {hero?.posterUrl ? (
-            <Image src={hero.posterUrl} alt={hero.title} fill className="object-cover" priority />
-          ) : (
-            <div className="h-full w-full bg-gradient-to-br from-purple-950 via-black to-pink-950" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
-
-          <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-12 lg:p-16">
-            <div className="mx-auto max-w-7xl">
-              {hero ? (
-                <>
-                  <span className="mb-2 inline-block rounded bg-purple-600/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider">
-                    {hero.category}
-                  </span>
-                  <h1 className="mb-2 text-3xl font-extrabold sm:text-4xl md:text-5xl lg:text-6xl drop-shadow-2xl leading-tight">
-                    {hero.title}
-                  </h1>
-                  <div className="mb-3 flex items-center gap-3 text-sm text-gray-300">
-                    <span>{hero.year}</span>
-                    {hero.duration && <><span className="text-gray-600">|</span><span>{hero.duration}</span></>}
-                  </div>
-                  {hero.description && (
-                    <p className="mb-5 max-w-lg text-sm text-gray-300 line-clamp-2 sm:text-base sm:line-clamp-3">
-                      {hero.description}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-3">
-                    <Link href={`/films/${hero.id}`} className="btn-primary text-sm sm:text-base px-6 sm:px-8 py-3">
-                      ▶ Regarder
-                    </Link>
-                    <Link href="/films" className="btn-secondary text-sm sm:text-base px-6 sm:px-8 py-3">
-                      Explorer
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Image src="/logo.png" alt="Streamora" width={80} height={80} className="mb-4 rounded-xl" />
-                  <h1 className="mb-3 text-3xl font-extrabold sm:text-4xl md:text-6xl">
-                    Bienvenue sur <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Streamora</span>
-                  </h1>
-                  <p className="mb-6 max-w-xl text-base text-gray-400 sm:text-lg">
-                    Vos films et séries préférés, disponibles en streaming.
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <Link href="/films" className="btn-primary text-base px-8 py-3">Explorer les films</Link>
-                    <Link href="/series" className="btn-secondary text-base px-8 py-3">Voir les séries</Link>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
+        {/* Hero Section - rotates between films/series */}
+        <HeroBanner items={heroItems} />
 
         <div className="mx-auto max-w-7xl space-y-8 sm:space-y-10 px-4 pb-16 -mt-16 relative z-10">
           {/* Latest Films */}
