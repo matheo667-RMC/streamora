@@ -10,9 +10,10 @@ export async function GET() {
     return NextResponse.json({
       maintenanceMode: settings?.maintenanceMode ?? false,
       maintenanceMsg: settings?.maintenanceMsg ?? "",
+      maintenanceStyle: settings?.maintenanceStyle ?? "classic",
     });
   } catch {
-    return NextResponse.json({ maintenanceMode: false, maintenanceMsg: "" });
+    return NextResponse.json({ maintenanceMode: false, maintenanceMsg: "", maintenanceStyle: "classic" });
   }
 }
 
@@ -23,18 +24,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
-    const { maintenanceMode, maintenanceMsg } = await req.json();
+    const { maintenanceMode, maintenanceMsg, maintenanceStyle } = await req.json();
 
     const settings = await prisma.siteSettings.upsert({
       where: { id: "main" },
       update: {
         maintenanceMode: maintenanceMode ?? false,
         ...(maintenanceMsg !== undefined ? { maintenanceMsg } : {}),
+        ...(maintenanceStyle !== undefined ? { maintenanceStyle } : {}),
       },
       create: {
         id: "main",
         maintenanceMode: maintenanceMode ?? false,
         maintenanceMsg: maintenanceMsg ?? "Streamora est en maintenance. Nous revenons bientôt !",
+        maintenanceStyle: maintenanceStyle ?? "classic",
       },
     });
 

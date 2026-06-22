@@ -100,13 +100,14 @@ export default function AdminPage() {
   // Maintenance
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [maintenanceStyle, setMaintenanceStyle] = useState("classic");
 
   const loadData = useCallback(() => {
     fetch("/api/admin/stats").then(r => r.json()).then(setStats).catch(() => {});
     fetch("/api/films").then(r => r.json()).then(setFilms).catch(() => {});
     fetch("/api/series").then(r => r.json()).then(setSeriesList).catch(() => {});
     fetch("/api/admin/users").then(r => r.json()).then(d => { if (Array.isArray(d)) setUsers(d); }).catch(() => {});
-    fetch("/api/admin/maintenance").then(r => r.json()).then(d => setMaintenance(d.maintenanceMode || false)).catch(() => {});
+    fetch("/api/admin/maintenance").then(r => r.json()).then(d => { setMaintenance(d.maintenanceMode || false); setMaintenanceStyle(d.maintenanceStyle || "classic"); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -322,7 +323,7 @@ export default function AdminPage() {
                         await fetch("/api/admin/maintenance", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ maintenanceMode: !maintenance }),
+                          body: JSON.stringify({ maintenanceMode: !maintenance, maintenanceStyle }),
                         });
                         setMaintenance(!maintenance);
                       } catch {}
@@ -337,6 +338,40 @@ export default function AdminPage() {
                   >
                     {maintenanceLoading ? "..." : maintenance ? "Desactiver la maintenance" : "Activer la maintenance"}
                   </button>
+                </div>
+
+                {/* Style selector */}
+                <div className="mt-5 pt-5 border-t border-white/10">
+                  <h4 className="text-sm font-medium text-gray-300 mb-3">Style de la page maintenance :</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {[
+                      { id: "classic", name: "Classique", desc: "Logo + animation", color: "purple" },
+                      { id: "cinema", name: "Cinema", desc: "Style film/entracte", color: "yellow" },
+                      { id: "neon", name: "Neon", desc: "Effets lumineux", color: "cyan" },
+                      { id: "minimal", name: "Minimal", desc: "Fond blanc, simple", color: "gray" },
+                      { id: "countdown", name: "Chargement", desc: "Barre de progression", color: "red" },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={async () => {
+                          setMaintenanceStyle(s.id);
+                          await fetch("/api/admin/maintenance", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ maintenanceMode: maintenance, maintenanceStyle: s.id }),
+                          });
+                        }}
+                        className={`rounded-xl p-3 text-left border transition-all ${
+                          maintenanceStyle === s.id
+                            ? "border-purple-500 bg-purple-500/10 ring-1 ring-purple-500"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{s.name}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{s.desc}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

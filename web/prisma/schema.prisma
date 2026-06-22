@@ -120,7 +120,8 @@ model Download {
 }
 
 model SiteSettings {
-  id              String  @id @default("main")
-  maintenanceMode Boolean @default(false)
-  maintenanceMsg  String  @default("Streamora est en maintenance. Nous revenons bientôt !")
+  id               String  @id @default("main")
+  maintenanceMode  Boolean @default(false)
+  maintenanceMsg   String  @default("Streamora est en maintenance. Nous revenons bientôt !")
+  maintenanceStyle String  @default("classic")
 }
