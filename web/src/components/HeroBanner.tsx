@@ -37,7 +37,7 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
 
   if (!hero) {
     return (
-      <section className="relative h-[85vh] sm:h-[80vh] w-full overflow-hidden">
+      <section className="relative h-[70vh] sm:h-[75vh] w-full overflow-hidden">
         <div className="h-full w-full bg-gradient-to-br from-purple-950 via-black to-pink-950" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
@@ -63,53 +63,69 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
   const href = hero.type === "film" ? `/films/${hero.id}` : `/series/${hero.id}`;
 
   return (
-    <section className="relative h-[85vh] sm:h-[80vh] w-full overflow-hidden">
-      {/* Background image */}
+    <section className="relative h-[70vh] sm:h-[75vh] w-full overflow-hidden">
+      {/* Blurred background for atmosphere */}
       <div className={`absolute inset-0 transition-opacity duration-700 ${fade ? "opacity-100" : "opacity-0"}`}>
-        {hero.posterUrl ? (
+        {hero.posterUrl && (
           <Image
             src={hero.posterUrl}
-            alt={hero.title}
+            alt=""
             fill
-            className="object-cover"
-            priority
+            className="object-cover scale-110 blur-2xl opacity-40"
             sizes="100vw"
           />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-br from-purple-950 via-black to-pink-950" />
         )}
       </div>
 
-      {/* Gradients */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
+      {/* Dark base */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-purple-950/40" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/50" />
 
-      {/* Content */}
-      <div className={`absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-12 lg:p-16 transition-opacity duration-700 ${fade ? "opacity-100" : "opacity-0"}`}>
-        <div className="mx-auto max-w-7xl">
-          <span className="mb-2 inline-block rounded bg-purple-600/80 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider">
-            {hero.category}
-          </span>
-          <h1 className="mb-2 text-3xl font-extrabold sm:text-4xl md:text-5xl lg:text-6xl drop-shadow-2xl leading-tight">
-            {hero.title}
-          </h1>
-          <div className="mb-3 flex items-center gap-3 text-sm text-gray-300">
-            <span>{hero.year}</span>
-            {hero.duration && <><span className="text-gray-600">|</span><span>{hero.duration}</span></>}
-            {hero.type === "series" && <><span className="text-gray-600">|</span><span>Série</span></>}
+      {/* Content layout: text left, poster right */}
+      <div className={`absolute inset-0 flex items-center transition-opacity duration-700 ${fade ? "opacity-100" : "opacity-0"}`}>
+        <div className="mx-auto max-w-7xl w-full px-6 sm:px-8 md:px-12 lg:px-16 flex items-center gap-8 md:gap-12 lg:gap-16">
+          {/* Left: info */}
+          <div className="flex-1 min-w-0">
+            <span className="mb-3 inline-block rounded bg-purple-600/80 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider">
+              {hero.category}
+            </span>
+            <h1 className="mb-3 text-2xl font-extrabold sm:text-3xl md:text-4xl lg:text-5xl drop-shadow-2xl leading-tight">
+              {hero.title}
+            </h1>
+            <div className="mb-3 flex items-center gap-3 text-sm text-gray-300">
+              <span>{hero.year}</span>
+              {hero.duration && <><span className="text-gray-600">|</span><span>{hero.duration}</span></>}
+              {hero.type === "series" && <><span className="text-gray-600">|</span><span>Série</span></>}
+            </div>
+            {hero.description && (
+              <p className="mb-5 max-w-md text-sm text-gray-300 line-clamp-3 sm:text-base">
+                {hero.description}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3">
+              <Link href={href} className="btn-primary text-sm sm:text-base px-6 sm:px-8 py-3">
+                ▶ Regarder
+              </Link>
+              <Link href="/films" className="btn-secondary text-sm sm:text-base px-6 sm:px-8 py-3">
+                Explorer
+              </Link>
+            </div>
           </div>
-          {hero.description && (
-            <p className="mb-5 max-w-lg text-sm text-gray-300 line-clamp-2 sm:text-base sm:line-clamp-3">
-              {hero.description}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-3">
-            <Link href={href} className="btn-primary text-sm sm:text-base px-6 sm:px-8 py-3">
-              ▶ Regarder
-            </Link>
-            <Link href="/films" className="btn-secondary text-sm sm:text-base px-6 sm:px-8 py-3">
-              Explorer
-            </Link>
+
+          {/* Right: poster - sharp and clear */}
+          <div className="hidden sm:block flex-shrink-0">
+            <div className="relative w-40 md:w-52 lg:w-64 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl shadow-purple-900/30 ring-1 ring-white/10">
+              {hero.posterUrl && (
+                <Image
+                  src={hero.posterUrl}
+                  alt={hero.title}
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 768px) 160px, (max-width: 1024px) 208px, 256px"
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
