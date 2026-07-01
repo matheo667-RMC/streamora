@@ -38,10 +38,10 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, poster }: Props)
   const seasonEpisodes = episodes.filter(ep => ep.season === activeSeason);
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="mt-6 space-y-6">
       {/* Video player */}
       {playingEp && playingEp.videoUrl && (
-        <div className="rounded-xl overflow-hidden bg-gray-900 border border-white/5">
+        <div className="rounded-xl overflow-hidden bg-[#16213e] border border-white/5 shadow-2xl shadow-black/50">
           <VideoPlayer
             videoUrl={playingEp.videoUrl}
             title={`${seriesTitle} - ${playingEp.title || `Episode ${playingEp.number}`}`}
@@ -101,16 +101,16 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, poster }: Props)
         ) : null}
       </div>
 
-      {/* Episode list - Netflix style */}
-      <div className="space-y-px rounded-xl overflow-hidden border border-white/5">
+      {/* Episode list */}
+      <div className="space-y-px rounded-xl overflow-hidden border border-white/5 bg-[#16213e]/80">
         {seasonEpisodes.map((ep, idx) => (
           <div key={ep.id}
             className={`flex items-center gap-4 sm:gap-5 p-4 sm:p-5 cursor-pointer transition-all ${
               playingEp?.id === ep.id
                 ? "bg-purple-500/10"
                 : idx % 2 === 0
-                  ? "bg-gray-900/60 hover:bg-gray-800/80"
-                  : "bg-gray-900/30 hover:bg-gray-800/80"
+                  ? "bg-[#16213e]/60 hover:bg-[#1a1a40]"
+                  : "bg-[#16213e]/30 hover:bg-[#1a1a40]"
             }`}
             onClick={() => ep.videoUrl && setPlayingEp(ep)}>
 

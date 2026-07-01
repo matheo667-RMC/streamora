@@ -29,95 +29,93 @@ export default async function SeriesDetailPage({ params }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-black">
-      {/* Hero backdrop */}
-      <div className="relative h-[50vh] sm:h-[55vh]">
-        {series.posterUrl && (
-          <Image
-            src={series.posterUrl}
-            alt=""
-            fill
-            className="object-cover"
-            priority
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-
-        <div className="absolute bottom-0 left-0 right-0">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-8">
-            <div className="flex flex-col md:flex-row items-end gap-6">
+    <div className="min-h-screen bg-[#1a1a2e]">
+      <div className="pt-16 sm:pt-20">
+        {/* Series info - papystreaming style */}
+        <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
+          <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row gap-5">
               {/* Poster */}
-              <div className="hidden md:block flex-shrink-0">
-                <div className="relative w-44 lg:w-52 aspect-[2/3] rounded-lg overflow-hidden shadow-2xl ring-1 ring-white/10">
-                  {series.posterUrl && (
-                    <Image
-                      src={series.posterUrl}
-                      alt={series.title}
-                      fill
-                      className="object-cover"
-                      priority
-                    />
+              <div className="shrink-0 self-start">
+                <div className="relative w-32 sm:w-40 aspect-[2/3] rounded-lg overflow-hidden ring-1 ring-white/10 shadow-lg">
+                  {series.posterUrl ? (
+                    <Image src={series.posterUrl} alt={series.title} fill className="object-cover" priority />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-gray-800 text-gray-600">
+                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                      </svg>
+                    </div>
                   )}
+                  <div className="absolute top-1.5 left-1.5 flex flex-col items-center">
+                    <span className="rounded-t bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
+                    <span className="rounded-b bg-purple-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{series.episodes.length}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0 pb-2">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="rounded bg-purple-600/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider">Série</span>
-                  <span className="text-sm text-gray-400">{series.year}</span>
-                </div>
-                <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl leading-tight">{series.title}</h1>
-
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-400">
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-gray-200">{series.category}</span>
-                  <span>{seasonNumbers.length} saison{seasonNumbers.length > 1 ? "s" : ""}</span>
-                  <span className="text-gray-600">·</span>
-                  <span>{series.episodes.length} épisode{series.episodes.length > 1 ? "s" : ""}</span>
-                </div>
+              {/* Details */}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold">{series.title}</h1>
 
                 {series.description && (
-                  <p className="mt-4 text-sm sm:text-base text-gray-300 leading-relaxed max-w-2xl line-clamp-3">
-                    {series.description}
-                  </p>
+                  <p className="mt-3 text-sm text-gray-400 leading-relaxed">{series.description}</p>
                 )}
 
-                {series.episodes.length > 0 && series.episodes[0]?.videoUrl && (
-                  <div className="mt-5 flex gap-3">
-                    <span className="inline-flex items-center gap-2 rounded-lg bg-white text-black px-6 py-2.5 text-sm font-bold hover:bg-gray-200 transition-colors cursor-default">
-                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                      Regarder S01E01
-                    </span>
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 shrink-0 w-24">Genre :</span>
+                    <span className="text-purple-400 font-medium">{series.category}</span>
                   </div>
-                )}
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 shrink-0 w-24">Année :</span>
+                    <span className="text-gray-300">{series.year}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 shrink-0 w-24">Saisons :</span>
+                    <span className="text-gray-300">{seasonNumbers.length}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-gray-500 shrink-0 w-24">Épisodes :</span>
+                    <span className="text-gray-300">{series.episodes.length}</span>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <Link href="/series" className="btn-secondary text-sm px-4 py-2 inline-flex items-center">
+                    <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Retour
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Episodes */}
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-16">
-        {seasonNumbers.length > 0 ? (
-          <EpisodePlayer
-            seasons={seasonNumbers}
-            episodes={series.episodes.map(ep => ({
-              id: ep.id,
-              season: ep.season,
-              number: ep.number,
-              title: ep.title,
-              videoUrl: ep.videoUrl,
-              duration: ep.duration,
-            }))}
-            seriesTitle={series.title}
-            poster={series.posterUrl || undefined}
-          />
-        ) : (
-          <div className="mt-8 rounded-xl border border-white/5 bg-gray-900/30 p-12 text-center">
-            <p className="text-gray-400">Aucun épisode disponible pour le moment.</p>
-          </div>
-        )}
+        {/* Episodes */}
+        <div className="mx-auto max-w-[1000px] px-4 sm:px-6 pb-16">
+          {seasonNumbers.length > 0 ? (
+            <EpisodePlayer
+              seasons={seasonNumbers}
+              episodes={series.episodes.map(ep => ({
+                id: ep.id,
+                season: ep.season,
+                number: ep.number,
+                title: ep.title,
+                videoUrl: ep.videoUrl,
+                duration: ep.duration,
+              }))}
+              seriesTitle={series.title}
+              poster={series.posterUrl || undefined}
+            />
+          ) : (
+            <div className="mt-8 rounded-xl border border-white/5 bg-[#16213e]/80 p-12 text-center">
+              <p className="text-gray-400">Aucun épisode disponible pour le moment.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <Footer />

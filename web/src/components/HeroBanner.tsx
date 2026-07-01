@@ -38,9 +38,9 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
   if (!hero) {
     return (
       <section className="relative h-[70vh] sm:h-[75vh] w-full overflow-hidden">
-        <div className="h-full w-full bg-gradient-to-br from-purple-950 via-black to-pink-950" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
+        <div className="h-full w-full bg-gradient-to-br from-purple-950 via-[#1a1a2e] to-pink-950" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a2e] via-[#1a1a2e]/50 to-[#1a1a2e]/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a2e]/90 via-[#1a1a2e]/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-12 lg:p-16">
           <div className="mx-auto max-w-7xl">
             <Image src="/logo.png" alt="Streamora" width={80} height={80} className="mb-4 rounded-xl" />
@@ -78,8 +78,8 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
       </div>
 
       {/* Dark base */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-purple-950/40" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e]/80 via-[#1a1a2e]/60 to-purple-950/40" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a2e] via-transparent to-[#1a1a2e]/50" />
 
       {/* Content layout: text left, poster right */}
       <div className={`absolute inset-0 flex items-center transition-opacity duration-700 ${fade ? "opacity-100" : "opacity-0"}`}>

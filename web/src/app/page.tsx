@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
 import { HeroBanner } from "@/components/HeroBanner";
 import { Footer } from "@/components/Footer";
+import { HomeCategoryFilter } from "@/components/HomeCategoryFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +13,11 @@ export default async function HomePage() {
   type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
   let latestFilms: FilmWithCount[] = [];
   let latestSeries: SeriesWithCount[] = [];
+  let filmCategories: string[] = [];
+  let seriesCategories: string[] = [];
 
   try {
-    const [f2, s1] = await Promise.all([
+    const [f, s, fc, sc] = await Promise.all([
       prisma.film.findMany({
         take: 20,
         orderBy: { createdAt: "desc" },
@@ -25,9 +28,13 @@ export default async function HomePage() {
         orderBy: { createdAt: "desc" },
         include: { _count: { select: { episodes: true } } },
       }),
+      prisma.film.findMany({ select: { category: true }, distinct: ["category"] }),
+      prisma.series.findMany({ select: { category: true }, distinct: ["category"] }),
     ]);
-    latestFilms = f2 as FilmWithCount[];
-    latestSeries = s1 as SeriesWithCount[];
+    latestFilms = f as FilmWithCount[];
+    latestSeries = s as SeriesWithCount[];
+    filmCategories = fc.map(c => c.category).filter(Boolean);
+    seriesCategories = sc.map(c => c.category).filter(Boolean);
   } catch {
     // Database not available yet
   }
@@ -63,82 +70,98 @@ export default async function HomePage() {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-[#1a1a2e]">
         <HeroBanner items={heroItems} />
 
-        <div className="mx-auto max-w-[1400px] space-y-10 px-4 sm:px-6 pb-16 -mt-16 relative z-10">
-          {/* Latest Films */}
+        <div className="mx-auto max-w-[1400px] space-y-8 px-4 sm:px-6 pb-16 -mt-16 relative z-10">
+          {/* Derniers Films */}
           {latestFilms.length > 0 && (
-            <ContentRow title="Nouveautés" href="/films">
-              {latestFilms.map((film) => (
-                <Link key={film.id} href={`/films/${film.id}`} className="flex-none w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px] group">
-                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/5 transition-all duration-300 group-hover:ring-purple-500/40 group-hover:shadow-xl group-hover:shadow-purple-900/20 group-hover:scale-105">
-                    {film.posterUrl ? (
-                      <Image src={film.posterUrl} alt={film.title} fill className="object-cover" sizes="(max-width: 640px) 140px, (max-width: 1024px) 180px, 200px" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
-                        <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                        </svg>
+            <section className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
+              <div className="flex flex-wrap items-center gap-3 mb-5">
+                <Link href="/films" className="shrink-0 flex items-center gap-1.5 rounded-md bg-purple-600 px-4 py-2 text-sm font-bold text-white hover:bg-purple-500 transition-colors">
+                  Derniers Films
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <HomeCategoryFilter categories={filmCategories} section="films" />
+                <Link href="/films" className="ml-auto shrink-0 flex items-center gap-1 rounded-md bg-purple-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-500 transition-colors">
+                  Voir La Suite...
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              </div>
+
+              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide" id="films-row">
+                {latestFilms.map((film) => (
+                  <Link key={film.id} href={`/films/${film.id}`} className="flex-none w-[130px] sm:w-[150px] md:w-[170px] group" data-category={film.category}>
+                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-purple-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-purple-900/30">
+                      {film.posterUrl ? (
+                        <Image src={film.posterUrl} alt={film.title} fill className="object-cover" sizes="170px" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
+                          <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* HD badge */}
+                      <div className="absolute top-1.5 left-1.5">
+                        <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[9px] font-bold leading-none">HD</span>
                       </div>
-                    )}
-                    {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <div className="flex items-center gap-2">
-                        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white text-black">
-                          <svg className="h-4 w-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                        </span>
-                        <span className="text-xs font-medium text-white">{film.year}</span>
+                      {/* Category badge */}
+                      <div className="absolute top-1.5 right-1.5">
+                        <span className="rounded bg-pink-600/90 px-1.5 py-0.5 text-[9px] font-bold leading-none">{film.category || "Film"}</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="mt-2 px-0.5">
-                    <h3 className="text-xs sm:text-sm font-medium line-clamp-1 text-gray-200 group-hover:text-white transition-colors">{film.title}</h3>
-                    <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{film.category}</p>
-                  </div>
-                </Link>
-              ))}
-            </ContentRow>
+                    <p className="mt-2 text-xs sm:text-sm text-center text-gray-300 line-clamp-2 group-hover:text-white transition-colors">{film.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
           )}
 
-          {/* Series */}
+          {/* Dernières Séries */}
           {latestSeries.length > 0 && (
-            <ContentRow title="Séries" href="/series">
-              {latestSeries.map((s) => (
-                <Link key={s.id} href={`/series/${s.id}`} className="flex-none w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px] group">
-                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/5 transition-all duration-300 group-hover:ring-purple-500/40 group-hover:shadow-xl group-hover:shadow-purple-900/20 group-hover:scale-105">
-                    {s.posterUrl ? (
-                      <Image src={s.posterUrl} alt={s.title} fill className="object-cover" sizes="(max-width: 640px) 140px, (max-width: 1024px) 180px, 200px" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
-                        <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <div className="flex items-center gap-2">
-                        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white text-black">
-                          <svg className="h-4 w-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                        </span>
-                        <span className="text-xs font-medium text-white">{s._count.episodes} ép.</span>
+            <section className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
+              <div className="flex flex-wrap items-center gap-3 mb-5">
+                <Link href="/series" className="shrink-0 flex items-center gap-1.5 rounded-md bg-purple-600 px-4 py-2 text-sm font-bold text-white hover:bg-purple-500 transition-colors">
+                  Dernières Séries
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <HomeCategoryFilter categories={seriesCategories} section="series" />
+                <Link href="/series" className="ml-auto shrink-0 flex items-center gap-1 rounded-md bg-purple-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-500 transition-colors">
+                  Voir La Suite...
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+              </div>
+
+              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide" id="series-row">
+                {latestSeries.map((s) => (
+                  <Link key={s.id} href={`/series/${s.id}`} className="flex-none w-[130px] sm:w-[150px] md:w-[170px] group" data-category={s.category}>
+                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-purple-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-purple-900/30">
+                      {s.posterUrl ? (
+                        <Image src={s.posterUrl} alt={s.title} fill className="object-cover" sizes="170px" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
+                          <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Episode count badge */}
+                      <div className="absolute top-1.5 left-1.5 flex flex-col items-center">
+                        <span className="rounded-t bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
+                        <span className="rounded-b bg-purple-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{s._count.episodes}</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="mt-2 px-0.5">
-                    <h3 className="text-xs sm:text-sm font-medium line-clamp-1 text-gray-200 group-hover:text-white transition-colors">{s.title}</h3>
-                    <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{s._count.episodes} épisode{s._count.episodes > 1 ? "s" : ""}</p>
-                  </div>
-                </Link>
-              ))}
-            </ContentRow>
+                    <p className="mt-2 text-xs sm:text-sm text-center text-gray-300 line-clamp-2 group-hover:text-white transition-colors">{s.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
           )}
 
           {/* Empty state */}
           {latestFilms.length === 0 && latestSeries.length === 0 && (
-            <div className="rounded-2xl border border-white/5 bg-gray-900/30 p-10 sm:p-16 text-center">
+            <div className="rounded-2xl border border-white/5 bg-[#16213e]/80 p-10 sm:p-16 text-center">
               <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-purple-500/10 flex items-center justify-center">
                 <svg className="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
@@ -153,22 +176,5 @@ export default async function HomePage() {
         <Footer />
       </div>
     </>
-  );
-}
-
-function ContentRow({ title, href, children }: { title: string; href: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg sm:text-xl font-bold md:text-2xl">{title}</h2>
-        <Link href={href} className="text-xs sm:text-sm text-purple-400 hover:text-purple-300 transition-colors whitespace-nowrap flex items-center gap-1">
-          Voir tout
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-        </Link>
-      </div>
-      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {children}
-      </div>
-    </section>
   );
 }

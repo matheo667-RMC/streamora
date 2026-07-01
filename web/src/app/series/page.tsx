@@ -48,68 +48,54 @@ export default async function SeriesPage({ searchParams }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-black">
-      <div className="relative pt-20 pb-8 px-4 sm:px-6">
-        <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 to-transparent h-64" />
+    <div className="min-h-screen bg-[#1a1a2e]">
+      <div className="relative pt-20 pb-6 px-4 sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 to-transparent h-48" />
         <div className="relative mx-auto max-w-[1400px]">
-          <h1 className="mb-2 text-3xl font-bold sm:text-4xl">Séries</h1>
-          <p className="text-sm text-gray-400 mb-6">Toutes les séries disponibles en streaming</p>
+          <div className="flex items-center gap-3 mb-4">
+            <h1 className="flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-lg font-bold">
+              Séries
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </h1>
+            <span className="text-sm text-gray-400">{series.length} résultat{series.length > 1 ? "s" : ""}</span>
+          </div>
           <FilmsFilter categories={categoryList} />
         </div>
       </div>
 
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-16">
         {series.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
             {series.map((s) => (
               <Link key={s.id} href={`/series/${s.id}`} className="group">
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/5 transition-all duration-300 group-hover:ring-purple-500/40 group-hover:shadow-xl group-hover:shadow-purple-900/20 group-hover:scale-105">
+                <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-purple-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-purple-900/30">
                   {s.posterUrl ? (
                     <Image
                       src={s.posterUrl}
                       alt={s.title}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+                      sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 14vw"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
-                      <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
                       </svg>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="flex items-center justify-center h-8 w-8 rounded-full bg-white text-black shrink-0">
-                        <svg className="h-4 w-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-white line-clamp-1">{s.title}</p>
-                        <p className="text-[10px] text-gray-300">{s._count.episodes} épisode{s._count.episodes > 1 ? "s" : ""}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="absolute top-2 left-2">
-                    <span className="rounded bg-purple-600/90 px-1.5 py-0.5 text-[10px] font-bold">SÉRIE</span>
+                  {/* Episode count badge */}
+                  <div className="absolute top-1.5 left-1.5 flex flex-col items-center">
+                    <span className="rounded-t bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
+                    <span className="rounded-b bg-purple-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{s._count.episodes}</span>
                   </div>
                 </div>
-                <div className="mt-2 px-0.5">
-                  <h3 className="text-sm font-medium line-clamp-1 text-gray-200 group-hover:text-white transition-colors">{s.title}</h3>
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-500">
-                    <span>{s.year}</span>
-                    <span>·</span>
-                    <span>{s.category}</span>
-                    <span>·</span>
-                    <span>{s._count.episodes} ép.</span>
-                  </div>
-                </div>
+                <p className="mt-2 text-xs sm:text-sm text-center text-gray-300 line-clamp-2 group-hover:text-white transition-colors">{s.title}</p>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/5 bg-gray-900/30 p-12 text-center">
+          <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-12 text-center">
             <p className="text-gray-400">Aucune série trouvée.</p>
           </div>
         )}
