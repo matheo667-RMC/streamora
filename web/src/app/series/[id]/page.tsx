@@ -29,94 +29,75 @@ export default async function SeriesDetailPage({ params }: Props) {
     <>
     <Navbar />
     <div className="min-h-screen bg-black">
-      {/* Hero section with poster background */}
-      <div className="relative">
-        {/* Background gradient */}
-        <div className="absolute inset-0 h-[450px]">
-          {series.posterUrl && (
-            <Image
-              src={series.posterUrl}
-              alt=""
-              fill
-              className="object-cover opacity-20 blur-xl"
-              priority
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black" />
-        </div>
+      {/* Hero backdrop */}
+      <div className="relative h-[50vh] sm:h-[55vh]">
+        {series.posterUrl && (
+          <Image
+            src={series.posterUrl}
+            alt=""
+            fill
+            className="object-cover"
+            priority
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
-        <div className="relative mx-auto max-w-7xl px-4 pt-24 pb-8">
-          <Link
-            href="/series"
-            className="mb-6 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            &larr; Retour aux series
-          </Link>
+        <div className="absolute bottom-0 left-0 right-0">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-8">
+            <div className="flex flex-col md:flex-row items-end gap-6">
+              {/* Poster */}
+              <div className="hidden md:block flex-shrink-0">
+                <div className="relative w-44 lg:w-52 aspect-[2/3] rounded-lg overflow-hidden shadow-2xl ring-1 ring-white/10">
+                  {series.posterUrl && (
+                    <Image
+                      src={series.posterUrl}
+                      alt={series.title}
+                      fill
+                      className="object-cover"
+                      priority
+                    />
+                  )}
+                </div>
+              </div>
 
-          <div className="flex flex-col md:flex-row gap-8 mt-4">
-            {/* Poster */}
-            <div className="flex-shrink-0 w-48 md:w-56">
-              <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-gray-800 shadow-2xl shadow-purple-900/20 ring-1 ring-white/10">
-                {series.posterUrl ? (
-                  <Image
-                    src={series.posterUrl}
-                    alt={series.title}
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-gray-600">
-                    <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                    </svg>
+              {/* Info */}
+              <div className="flex-1 min-w-0 pb-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="rounded bg-purple-600/90 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider">Série</span>
+                  <span className="text-sm text-gray-400">{series.year}</span>
+                </div>
+                <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl leading-tight">{series.title}</h1>
+
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-400">
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-gray-200">{series.category}</span>
+                  <span>{seasonNumbers.length} saison{seasonNumbers.length > 1 ? "s" : ""}</span>
+                  <span className="text-gray-600">·</span>
+                  <span>{series.episodes.length} épisode{series.episodes.length > 1 ? "s" : ""}</span>
+                </div>
+
+                {series.description && (
+                  <p className="mt-4 text-sm sm:text-base text-gray-300 leading-relaxed max-w-2xl line-clamp-3">
+                    {series.description}
+                  </p>
+                )}
+
+                {series.episodes.length > 0 && series.episodes[0]?.videoUrl && (
+                  <div className="mt-5 flex gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-lg bg-white text-black px-6 py-2.5 text-sm font-bold hover:bg-gray-200 transition-colors cursor-default">
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      Regarder S01E01
+                    </span>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Info */}
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">{series.title}</h1>
-
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <span className="rounded-full bg-purple-600/30 border border-purple-500/30 px-3 py-1 text-sm text-purple-300 font-medium">
-                  {series.category}
-                </span>
-                <span className="text-sm text-gray-400 font-medium">{series.year}</span>
-                <span className="h-1 w-1 rounded-full bg-gray-600" />
-                <span className="text-sm text-gray-400">
-                  {seasonNumbers.length} saison{seasonNumbers.length > 1 ? "s" : ""}
-                </span>
-                <span className="h-1 w-1 rounded-full bg-gray-600" />
-                <span className="text-sm text-gray-400">
-                  {series.episodes.length} episode{series.episodes.length > 1 ? "s" : ""}
-                </span>
-              </div>
-
-              {series.description && (
-                <p className="mt-5 text-gray-300 leading-relaxed max-w-2xl">
-                  {series.description}
-                </p>
-              )}
-
-              {series.episodes.length > 0 && series.episodes[0]?.videoUrl && (
-                <div className="mt-6">
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-white text-black px-5 py-2.5 text-sm font-semibold hover:bg-gray-200 transition-colors cursor-default">
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                    Regarder
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Episodes section */}
-      <div className="mx-auto max-w-7xl px-4 pb-16">
+      {/* Episodes */}
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-16">
         {seasonNumbers.length > 0 ? (
           <EpisodePlayer
             seasons={seasonNumbers}
@@ -133,7 +114,7 @@ export default async function SeriesDetailPage({ params }: Props) {
           />
         ) : (
           <div className="mt-8 rounded-xl border border-white/5 bg-gray-900/30 p-12 text-center">
-            <p className="text-gray-400">Aucun episode disponible pour le moment.</p>
+            <p className="text-gray-400">Aucun épisode disponible pour le moment.</p>
           </div>
         )}
       </div>
