@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { DownloadButton } from "@/components/DownloadButton";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
 interface Props {
   params: { id: string };
@@ -155,6 +156,8 @@ export default async function FilmDetailPage({ params }: Props) {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
     </>
   );

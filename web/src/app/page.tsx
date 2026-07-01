@@ -3,6 +3,7 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
 import { HeroBanner } from "@/components/HeroBanner";
+import { Footer } from "@/components/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -148,6 +149,8 @@ export default async function HomePage() {
             </div>
           )}
         </div>
+
+        <Footer />
       </div>
     </>
   );

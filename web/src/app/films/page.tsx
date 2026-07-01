@@ -3,6 +3,7 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { FilmsFilter } from "@/components/FilmsFilter";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +115,8 @@ export default async function FilmsPage({ searchParams }: Props) {
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
     </>
   );

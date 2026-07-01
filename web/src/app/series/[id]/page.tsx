@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
 import { EpisodePlayer } from "@/components/EpisodePlayer";
+import { Footer } from "@/components/Footer";
 
 interface Props {
   params: { id: string };
@@ -118,6 +119,8 @@ export default async function SeriesDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
     </>
   );

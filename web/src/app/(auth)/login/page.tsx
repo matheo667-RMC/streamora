@@ -89,23 +89,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 bg-gradient-to-br from-black via-gray-950 to-purple-950/30">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/60 backdrop-blur-2xl p-8 md:p-10 shadow-2xl">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      {/* Background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-950 to-purple-950/30" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent" />
+      
+      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-black/70 backdrop-blur-2xl p-8 md:p-10 shadow-2xl shadow-purple-900/10">
         <div className="mb-8 text-center">
           <Image
             src="/logo.png"
             alt="Streamora"
-            width={72}
-            height={72}
-            className="mx-auto rounded-xl"
+            width={64}
+            height={64}
+            className="mx-auto rounded-xl shadow-lg shadow-purple-900/20"
           />
-          <h1 className="mt-4 text-3xl font-bold">
-            {step === "2fa" ? "Verification 2FA" : "Se connecter"}
+          <h1 className="mt-4 text-2xl sm:text-3xl font-bold">
+            {step === "2fa" ? "Vérification 2FA" : "Bon retour !"}
           </h1>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-gray-500">
             {step === "2fa"
               ? "Entre le code de ton appli d'authentification"
-              : "Accédez à vos films et séries"}
+              : "Connecte-toi pour accéder à tes films et séries"}
           </p>
         </div>
 
@@ -231,3 +235,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

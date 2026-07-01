@@ -161,26 +161,38 @@ export default function AccountPage() {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-black pt-20 px-4 pb-10">
-        <div className="mx-auto max-w-xl">
-          <h1 className="text-3xl font-bold mb-8">
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Mon compte</span>
-          </h1>
+      <div className="min-h-screen bg-black">
+        {/* Header gradient */}
+        <div className="relative pt-20 pb-8 px-4">
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 to-transparent h-48" />
+          <div className="relative mx-auto max-w-xl">
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Mon compte</span>
+            </h1>
+          </div>
+        </div>
 
+        <div className="mx-auto max-w-xl px-4 pb-10">
           {/* Profile info */}
           <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 mb-6">
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-2xl font-bold flex-shrink-0">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-2xl font-bold flex-shrink-0 ring-2 ring-purple-500/20">
                 {session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"}
               </div>
-              <div>
-                <p className="text-lg font-semibold">{session.user.name || "Sans nom"}</p>
-                <p className="text-sm text-gray-400">{session.user.email}</p>
-                <div className="flex items-center gap-2 mt-1">
+              <div className="min-w-0">
+                <p className="text-lg font-semibold truncate">{session.user.name || "Sans nom"}</p>
+                <p className="text-sm text-gray-400 truncate">{session.user.email}</p>
+                <div className="flex items-center gap-2 mt-1.5">
                   {twoFAEnabled ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">2FA actif</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                      2FA actif
+                    </span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">2FA inactif</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+                      2FA inactif
+                    </span>
                   )}
                 </div>
               </div>
@@ -336,8 +348,9 @@ export default function AccountPage() {
 
           {/* Logout */}
           <button onClick={() => signOut({ callbackUrl: "/login" })}
-            className="w-full rounded-xl border border-red-500/20 bg-red-500/5 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
-            Se deconnecter
+            className="w-full rounded-xl border border-red-500/20 bg-red-500/5 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            Se déconnecter
           </button>
         </div>
       </div>
