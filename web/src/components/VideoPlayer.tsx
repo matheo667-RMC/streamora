@@ -9,7 +9,38 @@ interface Props {
   poster?: string;
 }
 
+// Check if URL is an external embed (vidzy, fsvid, uqload, etc.)
+function isEmbedUrl(url: string): boolean {
+  const embedDomains = ["vidzy.cc", "vidzy.org", "fsvid.lol", "uqload.is", "uqload.to", "doodstream", "voe.sx", "streamtape"];
+  return embedDomains.some(d => url.includes(d)) || url.includes("/embed");
+}
+
+function EmbedPlayer({ videoUrl, title }: { videoUrl: string; title: string }) {
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+      <iframe
+        src={videoUrl}
+        className="h-full w-full"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        allowFullScreen
+        title={title}
+        style={{ border: "none" }}
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+      />
+    </div>
+  );
+}
+
 export function VideoPlayer({ videoUrl, title, poster }: Props) {
+  // If embed URL, render iframe directly
+  if (isEmbedUrl(videoUrl)) {
+    return <EmbedPlayer videoUrl={videoUrl} title={title} />;
+  }
+
+  return <NativeVideoPlayer videoUrl={videoUrl} title={title} poster={poster} />;
+}
+
+function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
