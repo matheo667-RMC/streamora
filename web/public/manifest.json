@@ -1,21 +1,28 @@
 {
-  "name": "Streamora",
+  "name": "Streamora - Films & Séries",
   "short_name": "Streamora",
-  "description": "Films & Séries en Streaming HD",
+  "description": "Films & Séries en Streaming HD - Gratuit et sans pub",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#1a1a2e",
   "theme_color": "#8B5CF6",
+  "orientation": "any",
+  "categories": ["entertainment", "video"],
+  "lang": "fr",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }

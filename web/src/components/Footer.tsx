@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { InstallApp } from "./InstallApp";
 
 export function Footer() {
   return (
@@ -37,6 +38,12 @@ export function Footer() {
                 <Link href="/account" className="text-sm text-gray-500 hover:text-white transition-colors">Mon compte</Link>
               </div>
             </div>
+          </div>
+
+          {/* Install App */}
+          <div>
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Application</h4>
+            <InstallApp />
           </div>
         </div>
 
