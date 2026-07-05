@@ -28,6 +28,8 @@ export function Footer() {
                 <Link href="/" className="text-sm text-gray-500 hover:text-white transition-colors">Accueil</Link>
                 <Link href="/films" className="text-sm text-gray-500 hover:text-white transition-colors">Films</Link>
                 <Link href="/series" className="text-sm text-gray-500 hover:text-white transition-colors">Séries</Link>
+                <Link href="/tv" className="text-sm text-gray-500 hover:text-white transition-colors">TV en Direct</Link>
+                <Link href="/radio" className="text-sm text-gray-500 hover:text-white transition-colors">Radio</Link>
               </div>
             </div>
             <div>
