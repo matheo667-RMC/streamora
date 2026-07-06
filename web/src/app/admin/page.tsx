@@ -48,7 +48,14 @@ export default function AdminPage() {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminPin, setAdminPin] = useState("");
   const [pinError, setPinError] = useState("");
-  const [tab, setTab] = useState<"dashboard" | "films" | "series" | "users">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "films" | "series" | "users" | "convert">("dashboard");
+
+  // Video converter
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [convertedUrls, setConvertedUrls] = useState<{ fileName: string; url: string; size: string }[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [films, setFilms] = useState<Film[]>([]);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
@@ -258,11 +265,51 @@ export default function AdminPage() {
     loadData();
   }
 
+  function formatFileSize(bytes: number) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+  }
+
+  function uploadVideoFile(file: File) {
+    const videoExts = /\.(mp4|webm|ogg|avi|mkv|mov|flv|wmv|m4v)$/i;
+    if (!file.type.startsWith("video/") && !videoExts.test(file.name)) {
+      setUploadError("Ce fichier n'est pas une video. Formats : MP4, MKV, AVI, WebM...");
+      return;
+    }
+    setUploadingVideo(true);
+    setUploadProgress(0);
+    setUploadError(null);
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+    });
+    xhr.addEventListener("load", () => {
+      setUploadingVideo(false);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success && data.id) {
+            setConvertedUrls(prev => [{ fileName: file.name, url: `https://pixeldrain.com/api/file/${data.id}`, size: formatFileSize(file.size) }, ...prev]);
+          } else {
+            setUploadError(data.message || "Erreur lors de l'upload");
+          }
+        } catch { setUploadError("Reponse invalide"); }
+      } else { setUploadError(`Erreur ${xhr.status}`); }
+    });
+    xhr.addEventListener("error", () => { setUploadingVideo(false); setUploadError("Erreur reseau"); });
+    xhr.open("PUT", `https://pixeldrain.com/api/file/${encodeURIComponent(file.name)}`);
+    xhr.send(file);
+  }
+
   const tabs = [
     { key: "dashboard" as const, label: "Dashboard", icon: "&#x1f4ca;" },
     { key: "films" as const, label: "Films", icon: "&#x1f3ac;" },
     { key: "series" as const, label: "Series", icon: "&#x1f4fa;" },
     { key: "users" as const, label: "Utilisateurs", icon: "&#x1f465;" },
+    { key: "convert" as const, label: "Convertisseur", icon: "&#x1f517;" },
   ];
 
   return (
@@ -430,6 +477,109 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {seriesList.length === 0 && <p className="text-center text-gray-500 py-8">Aucune serie. Clique sur &quot;Ajouter&quot; pour commencer.</p>}
+              </div>
+            </div>
+          )}
+
+          {/* ── Convertisseur ── */}
+          {tab === "convert" && (
+            <div className="space-y-6">
+              <div className="text-center mb-2">
+                <h2 className="text-xl font-bold">Video <span className="text-red-500">&rarr;</span> URL</h2>
+                <p className="text-sm text-gray-400 mt-1">Glisse ta video ici pour obtenir un lien direct</p>
+              </div>
+
+              {/* Drop zone */}
+              <div
+                className={`relative rounded-2xl border-2 border-dashed p-10 sm:p-14 text-center transition-all cursor-pointer ${
+                  uploadingVideo
+                    ? "border-red-500/50 bg-red-500/5"
+                    : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
+                }`}
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-red-500", "bg-red-500/10"); }}
+                onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove("border-red-500", "bg-red-500/10"); }}
+                onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("border-red-500", "bg-red-500/10"); if (e.dataTransfer.files[0]) uploadVideoFile(e.dataTransfer.files[0]); }}
+                onClick={() => { if (!uploadingVideo) { const inp = document.createElement("input"); inp.type = "file"; inp.accept = "video/*"; inp.onchange = () => { if (inp.files?.[0]) uploadVideoFile(inp.files[0]); }; inp.click(); } }}
+              >
+                {uploadingVideo ? (
+                  <div className="space-y-4">
+                    <div className="mx-auto h-14 w-14 rounded-full border-4 border-red-500 border-t-transparent animate-spin" />
+                    <p className="text-lg font-medium">Upload en cours... {uploadProgress}%</p>
+                    <div className="mx-auto max-w-sm h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <p className="text-xs text-gray-500">Ne ferme pas cette page</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="mx-auto h-14 w-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
+                      <svg className="h-7 w-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                      </svg>
+                    </div>
+                    <p className="text-lg font-medium">Glisse ta video ici</p>
+                    <p className="text-sm text-gray-500">ou clique pour selectionner &bull; MP4, MKV, AVI, WebM...</p>
+                  </div>
+                )}
+              </div>
+
+              {uploadError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{uploadError}</div>
+              )}
+
+              {/* Results */}
+              {convertedUrls.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                    <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" />
+                    </svg>
+                    Liens generes
+                  </h3>
+                  {convertedUrls.map((r, i) => (
+                    <div key={i} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 rounded-lg bg-red-500/10 p-2">
+                          <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{r.fileName}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{r.size}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <code className="flex-1 min-w-0 truncate rounded-lg bg-black/50 border border-white/5 px-3 py-2 text-xs text-gray-300 font-mono">{r.url}</code>
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(r.url); setCopiedUrl(r.url); setTimeout(() => setCopiedUrl(null), 2000); }}
+                              className={`shrink-0 rounded-lg px-4 py-2 text-xs font-medium transition-all ${copiedUrl === r.url ? "bg-green-600 text-white" : "bg-red-600 text-white hover:bg-red-500"}`}
+                            >
+                              {copiedUrl === r.url ? "Copie !" : "Copier"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-white/5 bg-gray-900/30 p-5">
+                <h3 className="font-bold text-sm text-gray-300 mb-3">Comment ca marche ?</h3>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="space-y-2">
+                    <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">1</div>
+                    <p className="text-xs text-gray-400">Glisse ou selectionne ta video</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">2</div>
+                    <p className="text-xs text-gray-400">La video est convertie en lien</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">3</div>
+                    <p className="text-xs text-gray-400">Copie le lien et colle-le dans un film/serie</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
