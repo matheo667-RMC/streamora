@@ -29,11 +29,11 @@ export default async function SeriesDetailPage({ params }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#1a1a2e]">
+    <div className="min-h-screen bg-[#0a0a0a]">
       <div className="pt-16 sm:pt-20">
         {/* Series info - papystreaming style */}
         <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
-          <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
+          <div className="rounded-xl border border-white/5 bg-[#141414]/80 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row gap-5">
               {/* Poster */}
               <div className="shrink-0 self-start">
@@ -48,8 +48,8 @@ export default async function SeriesDetailPage({ params }: Props) {
                     </div>
                   )}
                   <div className="absolute top-1.5 left-1.5 flex flex-col items-center">
-                    <span className="rounded-t bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
-                    <span className="rounded-b bg-purple-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{series.episodes.length}</span>
+                    <span className="rounded-t bg-red-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
+                    <span className="rounded-b bg-red-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{series.episodes.length}</span>
                   </div>
                 </div>
               </div>
@@ -65,7 +65,7 @@ export default async function SeriesDetailPage({ params }: Props) {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex gap-2">
                     <span className="text-gray-500 shrink-0 w-24">Genre :</span>
-                    <span className="text-purple-400 font-medium">{series.category}</span>
+                    <span className="text-red-400 font-medium">{series.category}</span>
                   </div>
                   <div className="flex gap-2">
                     <span className="text-gray-500 shrink-0 w-24">Année :</span>
@@ -108,10 +108,11 @@ export default async function SeriesDetailPage({ params }: Props) {
                 duration: ep.duration,
               }))}
               seriesTitle={series.title}
+              seriesId={series.id}
               poster={series.posterUrl || undefined}
             />
           ) : (
-            <div className="mt-8 rounded-xl border border-white/5 bg-[#16213e]/80 p-12 text-center">
+            <div className="mt-8 rounded-xl border border-white/5 bg-[#141414]/80 p-12 text-center">
               <p className="text-gray-400">Aucun épisode disponible pour le moment.</p>
             </div>
           )}

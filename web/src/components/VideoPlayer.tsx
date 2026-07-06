@@ -270,7 +270,7 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
     return (
       <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="h-12 w-12 mx-auto animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+          <div className="h-12 w-12 mx-auto animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
           <p className="mt-3 text-sm text-gray-400">Chargement de la video...</p>
         </div>
       </div>
@@ -306,14 +306,14 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
       {/* Loading spinner */}
       {loading && isPlaying && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-red-500 border-t-transparent" />
         </div>
       )}
 
       {/* Play overlay (when paused and no controls) */}
       {!isPlaying && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer" onClick={togglePlay}>
-          <div className="rounded-full bg-purple-600/90 p-5 shadow-2xl hover:bg-purple-500 transition-colors">
+          <div className="rounded-full bg-red-600/90 p-5 shadow-2xl hover:bg-red-500 transition-colors">
             <svg className="h-12 w-12 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
@@ -325,14 +325,14 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
       <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-16 pb-3 px-4 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
         {/* Progress bar */}
         <div className="mb-3 cursor-pointer h-1.5 rounded-full bg-white/20 group/bar" onClick={seek}>
-          <div className="relative h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}>
+          <div className="relative h-full rounded-full bg-gradient-to-r from-red-500 to-red-400" style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}>
             <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-white shadow-md opacity-0 group-hover/bar:opacity-100 transition-opacity" />
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Play/Pause */}
-          <button onClick={togglePlay} className="text-white hover:text-purple-400 transition-colors">
+          <button onClick={togglePlay} className="text-white hover:text-red-400 transition-colors">
             {isPlaying ? (
               <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
             ) : (
@@ -367,7 +367,7 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
             </svg>
             <input type="range" min="0" max="1" step="0.05" value={volume} onChange={changeVolume}
-              className="w-20 h-1 rounded-full appearance-none bg-white/20 accent-purple-500" />
+              className="w-20 h-1 rounded-full appearance-none bg-white/20 accent-red-500" />
           </div>
 
           {/* Settings */}
@@ -383,13 +383,13 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ameliorations</p>
                 <label className="flex items-center justify-between cursor-pointer">
                   <span className="text-sm">Image HD</span>
-                  <div className={`w-10 h-5 rounded-full transition-colors relative ${enhance ? "bg-purple-600" : "bg-gray-700"}`} onClick={() => setEnhance(!enhance)}>
+                  <div className={`w-10 h-5 rounded-full transition-colors relative ${enhance ? "bg-red-600" : "bg-gray-700"}`} onClick={() => setEnhance(!enhance)}>
                     <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${enhance ? "translate-x-5" : "translate-x-0.5"}`} />
                   </div>
                 </label>
                 <label className="flex items-center justify-between cursor-pointer">
                   <span className="text-sm">Audio+</span>
-                  <div className={`w-10 h-5 rounded-full transition-colors relative ${audioEnhance ? "bg-purple-600" : "bg-gray-700"}`} onClick={() => setAudioEnhance(!audioEnhance)}>
+                  <div className={`w-10 h-5 rounded-full transition-colors relative ${audioEnhance ? "bg-red-600" : "bg-gray-700"}`} onClick={() => setAudioEnhance(!audioEnhance)}>
                     <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${audioEnhance ? "translate-x-5" : "translate-x-0.5"}`} />
                   </div>
                 </label>
@@ -415,7 +415,7 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
 
       {/* Enhancement badge */}
       {enhance && showControls && (
-        <div className="absolute top-3 right-3 rounded-md bg-purple-600/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+        <div className="absolute top-3 right-3 rounded-md bg-red-600/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
           HD+
         </div>
       )}

@@ -3,8 +3,8 @@ import { SessionProvider } from "@/components/SessionProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Streamora - Films, Séries, TV & Radio en Streaming",
-  description: "Regardez vos films et séries préférés, la TV en direct et écoutez la radio en streaming HD sur Streamora",
+  title: "Streamora - Films, Séries & TV en Streaming",
+  description: "Regardez vos films et séries préférés et la TV en direct en streaming HD sur Streamora",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },

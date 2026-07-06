@@ -41,7 +41,7 @@ export function FilmsFilter({ categories }: { categories: string[] }) {
             setSearch(e.target.value);
             if (e.target.value === "") applyFilter(undefined, "");
           }}
-          className="w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
+          className="w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-all"
         />
         {search && (
           <button
@@ -64,7 +64,7 @@ export function FilmsFilter({ categories }: { categories: string[] }) {
             onClick={() => applyFilter(cat)}
             className={`rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 ${
               activeCategory === cat
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-900/30 scale-105"
+                ? "bg-red-600 text-white shadow-lg shadow-red-900/30 scale-105"
                 : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5 hover:border-white/10"
             }`}
           >
