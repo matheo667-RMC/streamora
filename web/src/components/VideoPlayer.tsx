@@ -11,8 +11,8 @@ interface Props {
 
 // Check if URL is an external embed (vidzy, fsvid, uqload, etc.)
 function isEmbedUrl(url: string): boolean {
-  const embedDomains = ["vidzy.cc", "vidzy.org", "fsvid.lol", "uqload.is", "uqload.to", "uqload.com", "uqload.io", "doodstream", "voe.sx", "streamtape", "vidsrc", "2embed", "vidlink.pro", "streamsrcs", "cloudemb.com", "nontongo.win", "vidoza.net", "videzz.net", "mixdrop.co"];
-  return embedDomains.some(d => url.includes(d)) || url.includes("/embed");
+  const embedDomains = ["vidzy.cc", "vidzy.org", "vidzy.live", "fsvid.lol", "uqload.is", "uqload.to", "uqload.com", "uqload.io", "uqload.net", "doodstream", "voe.sx", "streamtape", "vidsrc", "2embed", "vidlink.pro", "streamsrcs", "cloudemb.com", "nontongo.win", "vidoza.net", "videzz.net", "mixdrop.co", "sendvid.com", "sibnet.ru", "jetload.net", "multiup.us"];
+  return embedDomains.some(d => url.includes(d)) || url.includes("/embed") || url.includes("embed-");
 }
 
 function EmbedPlayer({ videoUrl, title }: { videoUrl: string; title: string }) {
