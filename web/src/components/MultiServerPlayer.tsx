@@ -11,22 +11,23 @@ interface Server {
   build: (tmdbId: number, season?: number, episode?: number) => string;
 }
 
-// Multi-source list, all keyed by TMDB id so links resolve dynamically and don't
-// rot like single-file embeds. VF (French) sources come first (frembed); the
-// remaining ones are reliable fallbacks that render when frembed is blocked —
-// they often expose a FR audio track in their own player, otherwise VO.
+// Multi-source list, all keyed by TMDB id so links resolve dynamically and
+// don't rot like single-file embeds.
+// Working, reliable sources are listed first so a film PLAYS on click. vidsrc
+// renders a real player (choose audio/subtitle track via its ⚙ menu, FR when
+// available). frembed (VF) is kept as an option but is currently unstable.
 const MOVIE_SERVERS: Server[] = [
-  { id: "frembed-live", label: "Serveur 1 · VF", fr: true, build: (id) => `https://frembed.live/api/film.php?id=${id}` },
-  { id: "frembed-xyz", label: "Serveur 2 · VF", fr: true, build: (id) => `https://frembed.xyz/api/film.php?id=${id}` },
-  { id: "vidsrc", label: "Serveur 3", fr: false, build: (id) => `https://vidsrc.to/embed/movie/${id}` },
-  { id: "2embed", label: "Serveur 4", fr: false, build: (id) => `https://www.2embed.cc/embed/${id}` },
+  { id: "vidsrc", label: "Serveur 1", fr: false, build: (id) => `https://vidsrc.to/embed/movie/${id}` },
+  { id: "2embed", label: "Serveur 2", fr: false, build: (id) => `https://www.2embed.cc/embed/${id}` },
+  { id: "frembed-live", label: "Serveur 3 · VF", fr: true, build: (id) => `https://frembed.live/api/film.php?id=${id}` },
+  { id: "frembed-xyz", label: "Serveur 4 · VF", fr: true, build: (id) => `https://frembed.xyz/api/film.php?id=${id}` },
 ];
 
 const TV_SERVERS: Server[] = [
-  { id: "frembed-live", label: "Serveur 1 · VF", fr: true, build: (id, s, e) => `https://frembed.live/api/serie.php?id=${id}&sa=${s}&epi=${e}` },
-  { id: "frembed-xyz", label: "Serveur 2 · VF", fr: true, build: (id, s, e) => `https://frembed.xyz/api/serie.php?id=${id}&sa=${s}&epi=${e}` },
-  { id: "vidsrc", label: "Serveur 3", fr: false, build: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-  { id: "2embed", label: "Serveur 4", fr: false, build: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
+  { id: "vidsrc", label: "Serveur 1", fr: false, build: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
+  { id: "2embed", label: "Serveur 2", fr: false, build: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
+  { id: "frembed-live", label: "Serveur 3 · VF", fr: true, build: (id, s, e) => `https://frembed.live/api/serie.php?id=${id}&sa=${s}&epi=${e}` },
+  { id: "frembed-xyz", label: "Serveur 4 · VF", fr: true, build: (id, s, e) => `https://frembed.xyz/api/serie.php?id=${id}&sa=${s}&epi=${e}` },
 ];
 
 interface Props {
