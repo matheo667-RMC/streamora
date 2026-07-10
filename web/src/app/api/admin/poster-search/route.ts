@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   try {
     const endpoint = type === "series" ? "tv" : "movie";
     const res = await fetch(
-      `https://api.themoviedb.org/3/search/${endpoint}?query=${encodeURIComponent(query)}&language=fr-FR&page=1&api_key=4b62524531274019666c5a1e4db3b9a4`,
+      `https://api.themoviedb.org/3/search/${endpoint}?query=${encodeURIComponent(query)}&language=fr-FR&page=1&api_key=4e2f8bed54601f3f2b98de4dc0dc7aa9`,
       { next: { revalidate: 3600 } }
     );
 

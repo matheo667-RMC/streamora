@@ -109,6 +109,7 @@ export default async function SeriesDetailPage({ params }: Props) {
               }))}
               seriesTitle={series.title}
               seriesId={series.id}
+              seriesTmdbId={series.tmdbId}
               poster={series.posterUrl || undefined}
             />
           ) : (

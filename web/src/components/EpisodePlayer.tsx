@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { VideoPlayer } from "./VideoPlayer";
+import { MultiServerPlayer } from "./MultiServerPlayer";
 import { addToHistory, getLastWatchedForSeries, WatchHistoryItem } from "@/lib/watch-history";
 
 interface Episode {
@@ -18,10 +19,11 @@ interface Props {
   episodes: Episode[];
   seriesTitle: string;
   seriesId: string;
+  seriesTmdbId?: number | null;
   poster?: string;
 }
 
-export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, poster }: Props) {
+export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, seriesTmdbId, poster }: Props) {
   const [activeSeason, setActiveSeason] = useState(seasons[0] || 1);
   const [playingEp, setPlayingEp] = useState<Episode | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -45,7 +47,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, poster
   }, [seriesId]);
 
   const handlePlayEp = (ep: Episode) => {
-    if (!ep.videoUrl) return;
+    if (!ep.videoUrl && !seriesTmdbId) return;
     setPlayingEp(ep);
     addToHistory({
       id: ep.id,
@@ -56,7 +58,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, poster
       seriesTitle,
       season: ep.season,
       episodeNumber: ep.number,
-      videoUrl: ep.videoUrl,
+      videoUrl: ep.videoUrl || `tmdb:${seriesTmdbId}`,
     });
   };
 
@@ -103,13 +105,23 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, poster
       )}
 
       {/* Video player */}
-      {playingEp && playingEp.videoUrl && (
+      {playingEp && (playingEp.videoUrl || seriesTmdbId) && (
         <div className="rounded-xl overflow-hidden bg-[#16213e] border border-white/5 shadow-2xl shadow-black/50">
-          <VideoPlayer
-            videoUrl={playingEp.videoUrl}
-            title={`${seriesTitle} - ${playingEp.title || `Episode ${playingEp.number}`}`}
-            poster={poster}
-          />
+          {seriesTmdbId ? (
+            <MultiServerPlayer
+              tmdbId={seriesTmdbId}
+              type="tv"
+              season={playingEp.season}
+              episode={playingEp.number}
+              title={`${seriesTitle} - ${playingEp.title || `Episode ${playingEp.number}`}`}
+            />
+          ) : (
+            <VideoPlayer
+              videoUrl={playingEp.videoUrl}
+              title={`${seriesTitle} - ${playingEp.title || `Episode ${playingEp.number}`}`}
+              poster={poster}
+            />
+          )}
           <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
             <p className="text-sm font-medium">
               <span className="text-purple-400">S{String(playingEp.season).padStart(2, "0")}E{String(playingEp.number).padStart(2, "0")}</span>
@@ -219,7 +231,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, poster
             </div>
 
             {/* Action */}
-            {ep.videoUrl ? (
+            {(ep.videoUrl || seriesTmdbId) ? (
               <div className="flex-shrink-0">
                 {playingEp?.id === ep.id ? (
                   <span className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-medium text-white">En lecture</span>

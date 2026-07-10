@@ -65,6 +65,7 @@ model Film {
   category    String     @default("Autre")
   posterUrl   String     @default("")
   videoUrl    String     @default("")
+  tmdbId      Int?
   trailerUrl  String     @default("")
   year        Int        @default(2024)
   duration    String     @default("")
@@ -80,6 +81,7 @@ model Series {
   description String    @default("")
   category    String    @default("Autre")
   posterUrl   String    @default("")
+  tmdbId      Int?
   year        Int       @default(2024)
   featured    Boolean   @default(false)
   episodes    Episode[]

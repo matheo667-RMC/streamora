@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { DownloadButton } from "@/components/DownloadButton";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { MultiServerPlayer } from "@/components/MultiServerPlayer";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TrackWatch } from "@/components/TrackWatch";
@@ -34,22 +35,26 @@ export default async function FilmDetailPage({ params }: Props) {
     <div className="min-h-screen bg-[#1a1a2e]">
       <div className="pt-16 sm:pt-20">
         {/* Track watch history */}
-        {film.videoUrl && (
+        {(film.tmdbId || film.videoUrl) && (
           <TrackWatch
             id={film.id}
             type="film"
             title={film.title}
             posterUrl={film.posterUrl || undefined}
             filmId={film.id}
-            videoUrl={film.videoUrl}
+            videoUrl={film.videoUrl || `tmdb:${film.tmdbId}`}
           />
         )}
 
         {/* Video Player */}
-        {film.videoUrl && (
+        {(film.tmdbId || film.videoUrl) && (
           <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
             <div className="rounded-xl overflow-hidden border border-white/5 shadow-2xl shadow-black/50">
-              <VideoPlayer videoUrl={film.videoUrl} title={film.title} poster={film.posterUrl || undefined} />
+              {film.tmdbId ? (
+                <MultiServerPlayer tmdbId={film.tmdbId} type="movie" title={film.title} />
+              ) : (
+                <VideoPlayer videoUrl={film.videoUrl} title={film.title} poster={film.posterUrl || undefined} />
+              )}
             </div>
           </div>
         )}
