@@ -39,6 +39,8 @@ FOREIGN_MARKERS = [
     "BRASIL", "ITALIA", "DEUTSCH", "GERMAN", "ENGLISH", "RUSS", "HINDI", "BOLLY",
     "DUTCH", "POLSK", "ALBAN", "EX-YU", "EXYU", "CARTOON ARABY",
 ]
+# Adult / explicit markers to always exclude.
+ADULT_MARKERS = ["XXX", "ADULT", "ADULTE", "PORN", "EROT", "+18", "18+", "\U0001f51e"]
 
 _catalog_cache = {}
 
@@ -103,7 +105,12 @@ def player_api(acc, action=None, **params):
 
 def is_foreign(name):
     up = (name or "").upper()
-    return any(m in up for m in FOREIGN_MARKERS)
+    return any(m in up for m in FOREIGN_MARKERS) or any(m in up for m in ADULT_MARKERS)
+
+
+def is_adult(name):
+    up = (name or "").upper()
+    return any(m in up for m in ADULT_MARKERS)
 
 
 def is_fr(name):
@@ -133,7 +140,7 @@ def fetch_live(acc):
     out = []
     for s in streams:
         cid = str(s.get("category_id"))
-        if cid in cats:
+        if cid in cats and not is_adult(s.get("name")):
             out.append({
                 "id": s.get("stream_id"),
                 "name": s.get("name"),
@@ -149,7 +156,7 @@ def fetch_vod(acc):
     out = []
     for s in streams:
         cid = str(s.get("category_id"))
-        if cid in cats:
+        if cid in cats and not is_adult(s.get("name")):
             out.append({
                 "id": s.get("stream_id"),
                 "name": s.get("name"),
@@ -168,7 +175,7 @@ def fetch_series(acc):
     out = []
     for s in streams:
         cid = str(s.get("category_id"))
-        if cid in cats:
+        if cid in cats and not is_adult(s.get("name")):
             out.append({
                 "id": s.get("series_id"),
                 "name": s.get("name"),
