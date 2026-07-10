@@ -70,7 +70,56 @@ function EmbedPlayer({ videoUrl, title }: { videoUrl: string; title: string }) {
   );
 }
 
+function StreamzoPlayer({ videoUrl, title, poster }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<{ destroy: () => void } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const ref = videoUrl.replace(/^streamzo:/, "");
+  const src = `/api/streamzo?ref=${encodeURIComponent(ref)}`;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = src;
+    } else {
+      import("hls.js").then(({ default: Hls }) => {
+        if (Hls.isSupported()) {
+          const hls = new Hls({ maxBufferLength: 30 });
+          hls.loadSource(src);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.ERROR, (_e, data) => { if (data.fatal) setFailed(true); });
+          hlsRef.current = hls;
+        } else {
+          setFailed(true);
+        }
+      });
+    }
+    return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
+  }, [src]);
+
+  if (failed) {
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black flex items-center justify-center text-center px-6">
+        <p className="text-sm text-gray-400">Ce film est momentanément indisponible. Utilise le bouton « Ce lien ne marche pas ? » pour le retirer.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
+      <video ref={videoRef} poster={poster} controls autoPlay playsInline className="h-full w-full" title={title} />
+    </div>
+  );
+}
+
 export function VideoPlayer({ videoUrl, title, poster }: Props) {
+  if (videoUrl.startsWith("streamzo:")) {
+    return <StreamzoPlayer videoUrl={videoUrl} title={title} poster={poster} />;
+  }
+
   // If embed URL, render iframe directly
   if (isEmbedUrl(videoUrl)) {
     return <EmbedPlayer videoUrl={videoUrl} title={title} />;
