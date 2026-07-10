@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { FilmsFilter } from "@/components/FilmsFilter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { IptvSection } from "@/components/IptvSection";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,7 @@ export default async function FilmsPage({ searchParams }: Props) {
             <p className="text-gray-400">Aucun film trouvé.</p>
           </div>
         )}
+        <IptvSection kind="vod" />
       </div>
 
       <Footer />
