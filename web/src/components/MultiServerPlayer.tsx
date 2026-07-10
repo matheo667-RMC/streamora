@@ -11,18 +11,17 @@ interface Server {
   build: (tmdbId: number, season?: number, episode?: number) => string;
 }
 
-// French-first source list. frembed is a French (VF/VOSTFR) aggregator keyed by
-// TMDB id, so links resolve dynamically and don't rot like single-file embeds.
+// VF-only source list. frembed is a French (VF/VOSTFR) aggregator keyed by TMDB
+// id, so links resolve dynamically and don't rot like single-file embeds. Both
+// entries are real frembed front-domains (independent uptime, same FR catalog).
 const MOVIE_SERVERS: Server[] = [
-  { id: "frembed", label: "Serveur 1 · VF", fr: true, build: (id) => `https://frembed.live/api/film.php?id=${id}` },
-  { id: "2embed", label: "Serveur 2", fr: false, build: (id) => `https://www.2embed.cc/embed/${id}` },
-  { id: "vidsrc", label: "Serveur 3", fr: false, build: (id) => `https://vidsrc.xyz/embed/movie?tmdb=${id}` },
+  { id: "frembed-live", label: "Serveur 1 · VF", fr: true, build: (id) => `https://frembed.live/api/film.php?id=${id}` },
+  { id: "frembed-xyz", label: "Serveur 2 · VF", fr: true, build: (id) => `https://frembed.xyz/api/film.php?id=${id}` },
 ];
 
 const TV_SERVERS: Server[] = [
-  { id: "frembed", label: "Serveur 1 · VF", fr: true, build: (id, s, e) => `https://frembed.live/api/serie.php?id=${id}&sa=${s}&epi=${e}` },
-  { id: "2embed", label: "Serveur 2", fr: false, build: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
-  { id: "vidsrc", label: "Serveur 3", fr: false, build: (id, s, e) => `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}` },
+  { id: "frembed-live", label: "Serveur 1 · VF", fr: true, build: (id, s, e) => `https://frembed.live/api/serie.php?id=${id}&sa=${s}&epi=${e}` },
+  { id: "frembed-xyz", label: "Serveur 2 · VF", fr: true, build: (id, s, e) => `https://frembed.xyz/api/serie.php?id=${id}&sa=${s}&epi=${e}` },
 ];
 
 interface Props {
