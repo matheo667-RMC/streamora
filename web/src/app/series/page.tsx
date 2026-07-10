@@ -8,11 +8,14 @@ import { Footer } from "@/components/Footer";
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: { category?: string; q?: string };
+  searchParams: { category?: string; q?: string; page?: string };
 }
+
+const PER_PAGE = 60;
 
 export default async function SeriesPage({ searchParams }: Props) {
   const { category, q } = searchParams;
+  const page = Math.max(1, parseInt(searchParams.page || "1", 10) || 1);
 
   const where: Record<string, unknown> = {};
   if (category && category !== "Toutes") {
@@ -25,11 +28,15 @@ export default async function SeriesPage({ searchParams }: Props) {
   type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
   let series: SeriesWithCount[] = [];
   let categoryList: string[] = ["Toutes"];
+  let total = 0;
 
   try {
+    total = await prisma.series.count({ where });
     series = await prisma.series.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ posterUrl: "desc" }, { createdAt: "desc" }],
+      skip: (page - 1) * PER_PAGE,
+      take: PER_PAGE,
       include: { _count: { select: { episodes: true } } },
     }) as SeriesWithCount[];
 
@@ -45,6 +52,15 @@ export default async function SeriesPage({ searchParams }: Props) {
     // Database not available yet
   }
 
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const buildHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (category) sp.set("category", category);
+    if (q) sp.set("q", q);
+    sp.set("page", String(p));
+    return `/series?${sp.toString()}`;
+  };
+
   return (
     <>
     <Navbar />
@@ -57,7 +73,7 @@ export default async function SeriesPage({ searchParams }: Props) {
               Séries
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </h1>
-            <span className="text-sm text-gray-400">{series.length} résultat{series.length > 1 ? "s" : ""}</span>
+            <span className="text-sm text-gray-400">{total.toLocaleString("fr-FR")} série{total > 1 ? "s" : ""}</span>
           </div>
           <FilmsFilter categories={categoryList} />
         </div>
@@ -97,6 +113,18 @@ export default async function SeriesPage({ searchParams }: Props) {
         ) : (
           <div className="rounded-xl border border-white/5 bg-[#151515]/80 p-12 text-center">
             <p className="text-gray-400">Aucune série trouvée.</p>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-2 text-sm">
+            {page > 1 && (
+              <Link href={buildHref(page - 1)} className="rounded-md bg-white/10 px-4 py-2 font-medium hover:bg-white/20 transition-colors">Précédent</Link>
+            )}
+            <span className="px-3 py-2 text-gray-400">Page {page} / {totalPages}</span>
+            {page < totalPages && (
+              <Link href={buildHref(page + 1)} className="rounded-md bg-purple-600 px-4 py-2 font-medium hover:bg-purple-500 transition-colors">Suivant</Link>
+            )}
           </div>
         )}
       </div>

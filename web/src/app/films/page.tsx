@@ -8,11 +8,14 @@ import { Footer } from "@/components/Footer";
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: { category?: string; q?: string };
+  searchParams: { category?: string; q?: string; page?: string };
 }
+
+const PER_PAGE = 60;
 
 export default async function FilmsPage({ searchParams }: Props) {
   const { category, q } = searchParams;
+  const page = Math.max(1, parseInt(searchParams.page || "1", 10) || 1);
 
   const where: Record<string, unknown> = {};
   if (category && category !== "Toutes") {
@@ -25,11 +28,15 @@ export default async function FilmsPage({ searchParams }: Props) {
   type FilmWithCount = Awaited<ReturnType<typeof prisma.film.findMany>>[number] & { _count: { downloads: number } };
   let films: FilmWithCount[] = [];
   let categoryList: string[] = ["Toutes"];
+  let total = 0;
 
   try {
+    total = await prisma.film.count({ where });
     films = await prisma.film.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ posterUrl: "desc" }, { createdAt: "desc" }],
+      skip: (page - 1) * PER_PAGE,
+      take: PER_PAGE,
       include: { _count: { select: { downloads: true } } },
     }) as FilmWithCount[];
 
@@ -45,6 +52,15 @@ export default async function FilmsPage({ searchParams }: Props) {
     // Database not available yet
   }
 
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const buildHref = (p: number) => {
+    const sp = new URLSearchParams();
+    if (category) sp.set("category", category);
+    if (q) sp.set("q", q);
+    sp.set("page", String(p));
+    return `/films?${sp.toString()}`;
+  };
+
   return (
     <>
     <Navbar />
@@ -57,7 +73,7 @@ export default async function FilmsPage({ searchParams }: Props) {
               Films
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </h1>
-            <span className="text-sm text-gray-400">{films.length} résultat{films.length > 1 ? "s" : ""}</span>
+            <span className="text-sm text-gray-400">{total.toLocaleString("fr-FR")} film{total > 1 ? "s" : ""}</span>
           </div>
           <FilmsFilter categories={categoryList} />
         </div>
@@ -100,6 +116,18 @@ export default async function FilmsPage({ searchParams }: Props) {
         ) : (
           <div className="rounded-xl border border-white/5 bg-[#151515]/80 p-12 text-center">
             <p className="text-gray-400">Aucun film trouvé.</p>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-2 text-sm">
+            {page > 1 && (
+              <Link href={buildHref(page - 1)} className="rounded-md bg-white/10 px-4 py-2 font-medium hover:bg-white/20 transition-colors">Précédent</Link>
+            )}
+            <span className="px-3 py-2 text-gray-400">Page {page} / {totalPages}</span>
+            {page < totalPages && (
+              <Link href={buildHref(page + 1)} className="rounded-md bg-purple-600 px-4 py-2 font-medium hover:bg-purple-500 transition-colors">Suivant</Link>
+            )}
           </div>
         )}
       </div>
