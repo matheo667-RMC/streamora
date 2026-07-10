@@ -74,6 +74,11 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
 
   const seasonEpisodes = episodes.filter(ep => ep.season === activeSeason);
 
+  const ordered = [...episodes].sort((a, b) => a.season - b.season || a.number - b.number);
+  const nextEp = playingEp
+    ? ordered[ordered.findIndex(e => e.id === playingEp.id) + 1] ?? null
+    : null;
+
   return (
     <div className="mt-6 space-y-6">
       {/* Resume dialog */}
@@ -128,7 +133,15 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
               <span className="mx-2 text-gray-600">—</span>
               <span className="text-white">{playingEp.title || `Episode ${playingEp.number}`}</span>
             </p>
-            {playingEp.duration && (
+            {nextEp ? (
+              <button
+                onClick={() => { setActiveSeason(nextEp.season); handlePlayEp(nextEp); }}
+                className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 5v14l8-7zM13 5v14l8-7z" /></svg>
+                Épisode suivant
+              </button>
+            ) : playingEp.duration && (
               <span className="text-xs text-gray-500">{playingEp.duration}</span>
             )}
           </div>
