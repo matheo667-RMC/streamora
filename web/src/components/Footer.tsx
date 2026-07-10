@@ -4,14 +4,14 @@ import { InstallApp } from "./InstallApp";
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-[#0a0a0a]">
+    <footer className="border-t border-white/5 bg-[#0f0f23]">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 sm:py-12">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-8">
           {/* Logo & tagline */}
           <div className="max-w-xs">
             <Link href="/" className="flex items-center gap-2 mb-3">
               <Image src="/logo.png" alt="Streamora" width={28} height={28} className="rounded-lg" />
-              <span className="text-lg font-bold bg-gradient-to-r from-red-500 to-red-400 bg-clip-text text-transparent">
+              <span className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Streamora
               </span>
             </Link>

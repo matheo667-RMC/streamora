@@ -31,7 +31,7 @@ export default async function FilmDetailPage({ params }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#1a1a2e]">
       <div className="pt-16 sm:pt-20">
         {/* Track watch history */}
         {film.videoUrl && (
@@ -56,7 +56,7 @@ export default async function FilmDetailPage({ params }: Props) {
 
         {/* Film info - papystreaming style: poster left + details right */}
         <div className="mx-auto max-w-[1000px] px-4 sm:px-6 mt-6">
-          <div className="rounded-xl border border-white/5 bg-[#141414]/80 p-4 sm:p-6">
+          <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row gap-5">
               {/* Poster */}
               <div className="shrink-0 self-start">
@@ -71,7 +71,7 @@ export default async function FilmDetailPage({ params }: Props) {
                     </div>
                   )}
                   <div className="absolute top-1.5 left-1.5">
-                    <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold">HD</span>
+                    <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[9px] font-bold">HD</span>
                   </div>
                 </div>
               </div>
@@ -87,12 +87,12 @@ export default async function FilmDetailPage({ params }: Props) {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex gap-2">
                     <span className="text-gray-500 shrink-0 w-24">Genre :</span>
-                    <span className="text-red-400 font-medium">{film.category}</span>
+                    <span className="text-purple-400 font-medium">{film.category}</span>
                   </div>
                   <div className="flex gap-2">
                     <span className="text-gray-500 shrink-0 w-24">Qualité :</span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold">HD</span>
+                      <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[10px] font-bold">HD</span>
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -128,9 +128,9 @@ export default async function FilmDetailPage({ params }: Props) {
         {/* Related films grid */}
         {relatedFilms.length > 0 && (
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 mt-8 pb-16">
-            <div className="rounded-xl border border-white/5 bg-[#141414]/80 p-4 sm:p-6">
+            <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-5">
-                <h2 className="flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-bold">
+                <h2 className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-bold">
                   Films similaires
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </h2>
@@ -138,18 +138,18 @@ export default async function FilmDetailPage({ params }: Props) {
               <div className="grid grid-cols-3 gap-3 sm:gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                 {relatedFilms.map((rf) => (
                   <Link key={rf.id} href={`/films/${rf.id}`} className="group">
-                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-red-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-red-900/30">
+                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-purple-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-purple-900/30">
                       {rf.posterUrl ? (
                         <Image src={rf.posterUrl} alt={rf.title} fill className="object-cover" sizes="170px" />
                       ) : (
-                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-red-900/30 to-red-900/30 text-gray-600">
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
                           <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
                           </svg>
                         </div>
                       )}
                       <div className="absolute top-1.5 left-1.5">
-                        <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold leading-none">HD</span>
+                        <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[9px] font-bold leading-none">HD</span>
                       </div>
                     </div>
                     <p className="mt-2 text-xs sm:text-sm text-center text-gray-300 line-clamp-2 group-hover:text-white transition-colors">{rf.title}</p>

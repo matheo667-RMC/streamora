@@ -38,14 +38,14 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
   if (!hero) {
     return (
       <section className="relative h-[70vh] sm:h-[75vh] w-full overflow-hidden">
-        <div className="h-full w-full bg-gradient-to-br from-purple-950 via-[#0a0a0a] to-pink-950" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-[#0a0a0a]/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/90 via-[#0a0a0a]/40 to-transparent" />
+        <div className="h-full w-full bg-gradient-to-br from-purple-950 via-[#1a1a2e] to-pink-950" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a2e] via-[#1a1a2e]/50 to-[#1a1a2e]/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1a1a2e]/90 via-[#1a1a2e]/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-12 lg:p-16">
           <div className="mx-auto max-w-7xl">
             <Image src="/logo.png" alt="Streamora" width={80} height={80} className="mb-4 rounded-xl" />
             <h1 className="mb-3 text-3xl font-extrabold sm:text-4xl md:text-6xl">
-              Bienvenue sur <span className="bg-gradient-to-r from-red-400 to-red-400 bg-clip-text text-transparent">Streamora</span>
+              Bienvenue sur <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Streamora</span>
             </h1>
             <p className="mb-6 max-w-xl text-base text-gray-400 sm:text-lg">
               Vos films et séries préférés, disponibles en streaming.
@@ -78,15 +78,15 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
       </div>
 
       {/* Dark base */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a]/80 via-[#0a0a0a]/60 to-purple-950/40" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-[#0a0a0a]/50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e]/80 via-[#1a1a2e]/60 to-purple-950/40" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a2e] via-transparent to-[#1a1a2e]/50" />
 
       {/* Content layout: text left, poster right */}
       <div className={`absolute inset-0 flex items-center transition-opacity duration-700 ${fade ? "opacity-100" : "opacity-0"}`}>
         <div className="mx-auto max-w-7xl w-full px-6 sm:px-8 md:px-12 lg:px-16 flex items-center gap-8 md:gap-12 lg:gap-16">
           {/* Left: info */}
           <div className="flex-1 min-w-0">
-            <span className="mb-3 inline-block rounded bg-red-600/80 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider">
+            <span className="mb-3 inline-block rounded bg-purple-600/80 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider">
               {hero.category}
             </span>
             <h1 className="mb-3 text-2xl font-extrabold sm:text-3xl md:text-4xl lg:text-5xl drop-shadow-2xl leading-tight">
@@ -114,7 +114,7 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
 
           {/* Right: poster - sharp and clear */}
           <div className="hidden sm:block flex-shrink-0">
-            <div className="relative w-40 md:w-52 lg:w-64 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl shadow-red-900/30 ring-1 ring-white/10">
+            <div className="relative w-40 md:w-52 lg:w-64 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl shadow-purple-900/30 ring-1 ring-white/10">
               {hero.posterUrl && (
                 <Image
                   src={hero.posterUrl}
@@ -144,7 +144,7 @@ export function HeroBanner({ items }: { items: HeroItem[] }) {
                 }, 300);
               }}
               className={`h-2 rounded-full transition-all duration-300 ${
-                idx === currentIndex ? "w-6 bg-red-500" : "w-2 bg-white/30 hover:bg-white/50"
+                idx === currentIndex ? "w-6 bg-purple-500" : "w-2 bg-white/30 hover:bg-white/50"
               }`}
             />
           ))}

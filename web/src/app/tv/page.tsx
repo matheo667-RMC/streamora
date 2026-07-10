@@ -61,11 +61,11 @@ export default function TVPage() {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#1a1a2e] text-white">
       {/* Header */}
       <div className="px-6 pt-24 pb-4">
         <h1 className="text-3xl font-bold mb-2">
-          <span className="text-red-400">📺</span> TV en Direct
+          <span className="text-purple-400">📺</span> TV en Direct
         </h1>
         <p className="text-gray-400 text-sm">Regarde les chaînes TV françaises en direct</p>
       </div>
@@ -98,7 +98,7 @@ export default function TVPage() {
             onClick={() => setFilter(c)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               filter === c
-                ? "bg-red-600 text-white shadow-lg shadow-red-600/30"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
                 : "bg-white/5 text-gray-300 hover:bg-white/10"
             }`}
           >
@@ -115,7 +115,7 @@ export default function TVPage() {
             onClick={() => playChannel(channel)}
             className={`group relative flex flex-col items-center p-4 rounded-xl transition-all duration-200 ${
               activeChannel?.id === channel.id
-                ? "bg-red-600/20 border border-red-500/50 shadow-lg shadow-red-600/10 ring-2 ring-red-500/30"
+                ? "bg-purple-600/20 border border-purple-500/50 shadow-lg shadow-purple-600/10 ring-2 ring-purple-500/30"
                 : "bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:scale-105"
             }`}
           >

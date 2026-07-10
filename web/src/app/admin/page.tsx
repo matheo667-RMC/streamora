@@ -153,7 +153,7 @@ export default function AdminPage() {
             <p className="text-sm text-gray-400 mb-6">Entrez le mot de passe administrateur</p>
             {pinError && <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">{pinError}</div>}
             <input type="password" value={adminPin} onChange={e => setAdminPin(e.target.value)} placeholder="Mot de passe admin"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors mb-4 text-center text-lg tracking-widest"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors mb-4 text-center text-lg tracking-widest"
               onKeyDown={e => { if (e.key === "Enter") { if (adminPin === ADMIN_PASSWORD) { setAdminUnlocked(true); document.cookie = "streamora-admin=true; path=/; max-age=86400"; } else { setPinError("Mot de passe incorrect"); } } }} />
             <button onClick={() => { if (adminPin === ADMIN_PASSWORD) { setAdminUnlocked(true); document.cookie = "streamora-admin=true; path=/; max-age=86400"; } else { setPinError("Mot de passe incorrect"); } }} className="w-full btn-primary py-3">Deverrouiller</button>
           </div>
@@ -299,14 +299,14 @@ export default function AdminPage() {
       <div className="min-h-screen bg-black pt-20 px-4 pb-10">
         <div className="mx-auto max-w-6xl">
           <h1 className="text-3xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-red-400 to-red-400 bg-clip-text text-transparent">Panneau Admin</span>
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Panneau Admin</span>
           </h1>
 
           {/* Tabs */}
           <div className="flex gap-1 mb-8 bg-gray-900/50 rounded-xl p-1 overflow-x-auto">
             {tabs.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className={`flex-1 min-w-[100px] rounded-lg px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${tab === t.key ? "bg-red-600 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                className={`flex-1 min-w-[100px] rounded-lg px-4 py-2.5 text-sm font-medium transition-all whitespace-nowrap ${tab === t.key ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
                 <span dangerouslySetInnerHTML={{ __html: t.icon }} /> {t.label}
               </button>
             ))}
@@ -317,8 +317,8 @@ export default function AdminPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
-                  { label: "Films", val: stats.films, color: "from-red-600 to-red-800" },
-                  { label: "Series", val: stats.series, color: "from-red-500 to-pink-800" },
+                  { label: "Films", val: stats.films, color: "from-purple-600 to-purple-800" },
+                  { label: "Series", val: stats.series, color: "from-pink-600 to-pink-800" },
                   { label: "Episodes", val: stats.episodes, color: "from-blue-600 to-blue-800" },
                   { label: "Downloads", val: stats.downloads, color: "from-green-600 to-green-800" },
                   { label: "Utilisateurs", val: stats.users, color: "from-yellow-600 to-yellow-800" },
@@ -391,7 +391,7 @@ export default function AdminPage() {
                         }}
                         className={`rounded-xl p-3 text-left border transition-all ${
                           maintenanceStyle === s.id
-                            ? "border-red-500 bg-red-500/10 ring-1 ring-red-500"
+                            ? "border-purple-500 bg-purple-500/10 ring-1 ring-purple-500"
                             : "border-white/10 bg-white/5 hover:border-white/20"
                         }`}
                       >
@@ -414,7 +414,7 @@ export default function AdminPage() {
               </div>
               <div className="space-y-2">
                 {films.map(f => (
-                  <div key={f.id} className="flex items-center gap-4 rounded-xl border border-white/5 bg-gray-900/50 p-3 hover:border-red-500/30 transition-colors">
+                  <div key={f.id} className="flex items-center gap-4 rounded-xl border border-white/5 bg-gray-900/50 p-3 hover:border-purple-500/30 transition-colors">
                     <div className="h-16 w-11 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0">
                       {f.posterUrl && <img src={f.posterUrl} alt="" className="h-full w-full object-cover" />}
                     </div>
@@ -442,7 +442,7 @@ export default function AdminPage() {
               </div>
               <div className="space-y-2">
                 {seriesList.map(s => (
-                  <div key={s.id} className="flex items-center gap-4 rounded-xl border border-white/5 bg-gray-900/50 p-3 hover:border-red-500/30 transition-colors">
+                  <div key={s.id} className="flex items-center gap-4 rounded-xl border border-white/5 bg-gray-900/50 p-3 hover:border-purple-500/30 transition-colors">
                     <div className="h-16 w-11 rounded-lg bg-gray-800 overflow-hidden flex-shrink-0">
                       {s.posterUrl && <img src={s.posterUrl} alt="" className="h-full w-full object-cover" />}
                     </div>
@@ -451,7 +451,7 @@ export default function AdminPage() {
                       <p className="text-xs text-gray-500">{s.year} &middot; {s.category} &middot; {s._count?.episodes || 0} episode{(s._count?.episodes || 0) !== 1 ? "s" : ""}</p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <button onClick={() => openManageEpisodes(s)} className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors">Episodes</button>
+                      <button onClick={() => openManageEpisodes(s)} className="rounded-lg bg-purple-500/10 px-3 py-1.5 text-xs text-purple-400 hover:bg-purple-500/20 transition-colors">Episodes</button>
                       <button onClick={() => openEditSeries(s)} className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-gray-300 hover:bg-white/10 transition-colors">Modifier</button>
                       <button onClick={() => deleteSeries(s.id, s.title)} className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors">Supprimer</button>
                     </div>
@@ -466,23 +466,23 @@ export default function AdminPage() {
           {tab === "convert" && (
             <div className="space-y-6">
               <div className="text-center mb-2">
-                <h2 className="text-xl font-bold">Video <span className="text-red-500">&rarr;</span> URL</h2>
+                <h2 className="text-xl font-bold">Video <span className="text-purple-500">&rarr;</span> URL</h2>
                 <p className="text-sm text-gray-400 mt-1">Transforme ton film en lien pour l&apos;ajouter au site</p>
               </div>
 
               {/* Google Drive converter - PRIMARY method */}
-              <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-6">
+              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-6">
                 <div className="flex items-center gap-2 mb-1">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7.71 3.5L1.15 15l4.58 7.5h13.54L12 3.5H7.71zm5.77 0l7.44 12.88-3.56 6.12H22l-4.48-7.5L12.48 3.5h1z" /></svg>
+                  <svg className="h-5 w-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7.71 3.5L1.15 15l4.58 7.5h13.54L12 3.5H7.71zm5.77 0l7.44 12.88-3.56 6.12H22l-4.48-7.5L12.48 3.5h1z" /></svg>
                   <h3 className="font-bold text-base">Convertir un film via Google Drive</h3>
-                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Recommande</span>
+                  <span className="rounded-full bg-purple-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Recommande</span>
                 </div>
                 <p className="text-xs text-gray-400 mb-4">La methode la plus fiable pour les gros films (permanent, gratuit, illimite)</p>
 
                 <ol className="space-y-2 mb-4 text-sm text-gray-300">
-                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center">1</span> Va sur <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="text-red-400 underline">drive.google.com</a> et upload ton film</li>
-                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center">2</span> Clic droit sur le film &rarr; <b>Partager</b> &rarr; mets <b>&laquo; Tous les utilisateurs disposant du lien &raquo;</b></li>
-                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center">3</span> Copie le lien et colle-le ci-dessous</li>
+                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">1</span> Va sur <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="text-purple-400 underline">drive.google.com</a> et upload ton film</li>
+                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">2</span> Clic droit sur le film &rarr; <b>Partager</b> &rarr; mets <b>&laquo; Tous les utilisateurs disposant du lien &raquo;</b></li>
+                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">3</span> Copie le lien et colle-le ci-dessous</li>
                 </ol>
 
                 <div className="flex gap-2">
@@ -491,13 +491,13 @@ export default function AdminPage() {
                     value={driveUrl}
                     onChange={e => setDriveUrl(e.target.value)}
                     placeholder="https://drive.google.com/file/d/.../view"
-                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
+                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
                     onKeyDown={e => { if (e.key === "Enter" && driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
                   />
                   <button
                     onClick={() => { if (driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
                     disabled={!driveUrl.trim()}
-                    className="shrink-0 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
+                    className="shrink-0 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 transition-colors"
                   >
                     Convertir
                   </button>
@@ -518,7 +518,7 @@ export default function AdminPage() {
               {/* Paste any URL */}
               <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
                 <h3 className="font-bold text-sm text-gray-300 mb-3 flex items-center gap-2">
-                  <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" /></svg>
+                  <svg className="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" /></svg>
                   Coller une URL directe
                 </h3>
                 <p className="text-xs text-gray-500 mb-3">Si tu as deja un lien video (embed, direct, etc.), colle-le directement</p>
@@ -527,7 +527,7 @@ export default function AdminPage() {
                     type="text"
                     id="directUrlInput"
                     placeholder="https://..."
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
+                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
                     onKeyDown={e => {
                       if (e.key === "Enter") {
                         const val = (e.target as HTMLInputElement).value.trim();
@@ -541,7 +541,7 @@ export default function AdminPage() {
                       const val = inp?.value.trim();
                       if (val) { setConvertedUrls(prev => [{ fileName: "URL directe", url: val, size: "Lien" }, ...prev]); inp.value = ""; }
                     }}
-                    className="shrink-0 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-500 transition-colors"
+                    className="shrink-0 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
                   >
                     Ajouter
                   </button>
@@ -552,7 +552,7 @@ export default function AdminPage() {
               {convertedUrls.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-gray-300 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" />
                     </svg>
                     Liens generes
@@ -560,8 +560,8 @@ export default function AdminPage() {
                   {convertedUrls.map((r, i) => (
                     <div key={i} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
                       <div className="flex items-start gap-3">
-                        <div className="shrink-0 rounded-lg bg-red-500/10 p-2">
-                          <svg className="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <div className="shrink-0 rounded-lg bg-purple-500/10 p-2">
+                          <svg className="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
                           </svg>
@@ -573,7 +573,7 @@ export default function AdminPage() {
                             <code className="flex-1 min-w-0 truncate rounded-lg bg-black/50 border border-white/5 px-3 py-2 text-xs text-gray-300 font-mono">{r.url}</code>
                             <button
                               onClick={() => { navigator.clipboard.writeText(r.url); setCopiedUrl(r.url); setTimeout(() => setCopiedUrl(null), 2000); }}
-                              className={`shrink-0 rounded-lg px-4 py-2 text-xs font-medium transition-all ${copiedUrl === r.url ? "bg-green-600 text-white" : "bg-red-600 text-white hover:bg-red-500"}`}
+                              className={`shrink-0 rounded-lg px-4 py-2 text-xs font-medium transition-all ${copiedUrl === r.url ? "bg-green-600 text-white" : "bg-purple-600 text-white hover:bg-purple-500"}`}
                             >
                               {copiedUrl === r.url ? "Copie !" : "Copier"}
                             </button>
@@ -589,15 +589,15 @@ export default function AdminPage() {
                 <h3 className="font-bold text-sm text-gray-300 mb-3">Comment ca marche ?</h3>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="space-y-2">
-                    <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">1</div>
+                    <div className="mx-auto h-9 w-9 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold text-sm">1</div>
                     <p className="text-xs text-gray-400">Upload ton film sur Google Drive et copie le lien de partage</p>
                   </div>
                   <div className="space-y-2">
-                    <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">2</div>
+                    <div className="mx-auto h-9 w-9 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold text-sm">2</div>
                     <p className="text-xs text-gray-400">Colle le lien ici pour obtenir une URL de streaming</p>
                   </div>
                   <div className="space-y-2">
-                    <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">3</div>
+                    <div className="mx-auto h-9 w-9 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold text-sm">3</div>
                     <p className="text-xs text-gray-400">Copie l&apos;URL et colle-la dans le champ Video d&apos;un film/serie</p>
                   </div>
                 </div>
@@ -610,14 +610,14 @@ export default function AdminPage() {
             <div className="space-y-2">
               {users.map(u => (
                 <div key={u.id} className="flex items-center gap-4 rounded-xl border border-white/5 bg-gray-900/50 p-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-600 to-red-500 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
                     {u.name?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase() || "?"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{u.name || "Sans nom"}</p>
                     <p className="text-xs text-gray-500">{u.email}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${u.role === "admin" ? "bg-red-500/20 text-red-400" : "bg-gray-800 text-gray-400"}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${u.role === "admin" ? "bg-purple-500/20 text-purple-400" : "bg-gray-800 text-gray-400"}`}>
                     {u.role}
                   </span>
                 </div>
@@ -643,8 +643,8 @@ export default function AdminPage() {
             <div className="space-y-1">
               <label className="text-xs text-gray-400">Affiche du film</label>
               <div className="flex gap-2">
-                <input type="text" value={filmForm.posterUrl} onChange={e => setFilmForm({ ...filmForm, posterUrl: e.target.value })} placeholder="URL de l'affiche ou chercher ci-dessous" className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors" />
-                <button type="button" onClick={() => searchPoster(filmForm.title, "film")} disabled={posterSearching || !filmForm.title.trim()} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50 whitespace-nowrap transition-colors">
+                <input type="text" value={filmForm.posterUrl} onChange={e => setFilmForm({ ...filmForm, posterUrl: e.target.value })} placeholder="URL de l'affiche ou chercher ci-dessous" className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors" />
+                <button type="button" onClick={() => searchPoster(filmForm.title, "film")} disabled={posterSearching || !filmForm.title.trim()} className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 whitespace-nowrap transition-colors">
                   {posterSearching ? "..." : "Chercher HD"}
                 </button>
               </div>
@@ -654,7 +654,7 @@ export default function AdminPage() {
               {posterResults.length > 0 && posterTarget === "film" && (
                 <div className="mt-2 grid grid-cols-4 gap-2 max-h-60 overflow-y-auto rounded-lg border border-white/10 bg-black/50 p-2">
                   {posterResults.map(r => (
-                    <button key={r.id} type="button" onClick={() => selectPoster(r.posterUrlHD, r.overview)} className="group relative rounded-lg overflow-hidden border border-transparent hover:border-red-500 transition-colors">
+                    <button key={r.id} type="button" onClick={() => selectPoster(r.posterUrlHD, r.overview)} className="group relative rounded-lg overflow-hidden border border-transparent hover:border-purple-500 transition-colors">
                       <img src={r.posterUrl} alt={r.title} className="w-full aspect-[2/3] object-cover" />
                       <div className="absolute inset-x-0 bottom-0 bg-black/80 p-1 text-[10px] text-center truncate">{r.title} ({r.year})</div>
                     </button>
@@ -663,7 +663,7 @@ export default function AdminPage() {
               )}
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={filmForm.featured} onChange={e => setFilmForm({ ...filmForm, featured: e.target.checked })} className="rounded border-gray-600 bg-gray-700 text-red-600 focus:ring-red-500" />
+              <input type="checkbox" checked={filmForm.featured} onChange={e => setFilmForm({ ...filmForm, featured: e.target.checked })} className="rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500" />
               <span className="text-sm">En vedette (hero sur la page d&apos;accueil)</span>
             </label>
             <button onClick={saveFilm} disabled={saving || !filmForm.title.trim()} className="w-full btn-primary py-3">
@@ -686,8 +686,8 @@ export default function AdminPage() {
             <div className="space-y-1">
               <label className="text-xs text-gray-400">Affiche de la serie</label>
               <div className="flex gap-2">
-                <input type="text" value={seriesForm.posterUrl} onChange={e => setSeriesForm({ ...seriesForm, posterUrl: e.target.value })} placeholder="URL de l'affiche ou chercher ci-dessous" className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors" />
-                <button type="button" onClick={() => searchPoster(seriesForm.title, "series")} disabled={posterSearching || !seriesForm.title.trim()} className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50 whitespace-nowrap transition-colors">
+                <input type="text" value={seriesForm.posterUrl} onChange={e => setSeriesForm({ ...seriesForm, posterUrl: e.target.value })} placeholder="URL de l'affiche ou chercher ci-dessous" className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors" />
+                <button type="button" onClick={() => searchPoster(seriesForm.title, "series")} disabled={posterSearching || !seriesForm.title.trim()} className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 whitespace-nowrap transition-colors">
                   {posterSearching ? "..." : "Chercher HD"}
                 </button>
               </div>
@@ -697,7 +697,7 @@ export default function AdminPage() {
               {posterResults.length > 0 && posterTarget === "series" && (
                 <div className="mt-2 grid grid-cols-4 gap-2 max-h-60 overflow-y-auto rounded-lg border border-white/10 bg-black/50 p-2">
                   {posterResults.map(r => (
-                    <button key={r.id} type="button" onClick={() => selectPoster(r.posterUrlHD, r.overview)} className="group relative rounded-lg overflow-hidden border border-transparent hover:border-red-500 transition-colors">
+                    <button key={r.id} type="button" onClick={() => selectPoster(r.posterUrlHD, r.overview)} className="group relative rounded-lg overflow-hidden border border-transparent hover:border-purple-500 transition-colors">
                       <img src={r.posterUrl} alt={r.title} className="w-full aspect-[2/3] object-cover" />
                       <div className="absolute inset-x-0 bottom-0 bg-black/80 p-1 text-[10px] text-center truncate">{r.title} ({r.year})</div>
                     </button>
@@ -706,7 +706,7 @@ export default function AdminPage() {
               )}
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={seriesForm.featured} onChange={e => setSeriesForm({ ...seriesForm, featured: e.target.checked })} className="rounded border-gray-600 bg-gray-700 text-red-600 focus:ring-red-500" />
+              <input type="checkbox" checked={seriesForm.featured} onChange={e => setSeriesForm({ ...seriesForm, featured: e.target.checked })} className="rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500" />
               <span className="text-sm">En vedette</span>
             </label>
             <button onClick={saveSeries} disabled={saving || !seriesForm.title.trim()} className="w-full btn-primary py-3">
@@ -721,8 +721,8 @@ export default function AdminPage() {
         <Modal title={`Episodes — ${managingSeries.title}`} onClose={() => setEpisodeModal(false)} wide>
           <div className="space-y-4">
             {/* Help text */}
-            <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-              <p className="text-sm text-red-300">Pour ajouter un episode, remplis le formulaire ci-dessous avec le lien video (Google Drive ou lien direct). L&apos;episode sera automatiquement ajoute a la serie.</p>
+            <div className="rounded-lg bg-purple-500/10 border border-purple-500/20 p-3">
+              <p className="text-sm text-purple-300">Pour ajouter un episode, remplis le formulaire ci-dessous avec le lien video (Google Drive ou lien direct). L&apos;episode sera automatiquement ajoute a la serie.</p>
             </div>
 
             {/* Existing episodes grouped by season */}
@@ -730,7 +730,7 @@ export default function AdminPage() {
               <div className="space-y-3 max-h-72 overflow-y-auto">
                 {[...new Set(managingSeries.episodes.map(ep => ep.season))].sort((a, b) => a - b).map(season => (
                   <div key={season}>
-                    <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1">Saison {season}</p>
+                    <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">Saison {season}</p>
                     <div className="space-y-1">
                       {managingSeries.episodes!.filter(ep => ep.season === season).sort((a, b) => a.number - b.number).map(ep => (
                         <div key={ep.id} className="flex items-center gap-3 rounded-lg bg-gray-800/50 p-2.5 group hover:bg-gray-800 transition-colors">
@@ -755,7 +755,7 @@ export default function AdminPage() {
 
             <div className="border-t border-white/10 pt-4">
               <p className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white">+</span>
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-[10px] text-white">+</span>
                 Ajouter un episode
               </p>
               <div className="grid grid-cols-3 gap-3">
@@ -791,7 +791,7 @@ function Modal({ title, onClose, children, wide }: { title: string; onClose: () 
 }
 
 function Field({ label, value, onChange, placeholder, textarea }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; textarea?: boolean }) {
-  const cls = "w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors";
+  const cls = "w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors";
   return (
     <div className="space-y-1">
       <label className="text-xs text-gray-400">{label}</label>

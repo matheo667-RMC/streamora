@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
               <div>
                 <label className="text-xs text-gray-400">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
                   placeholder="ton@email.com" />
               </div>
               <button type="submit" disabled={loading} className="w-full btn-primary py-3">
@@ -112,13 +112,13 @@ export default function ForgotPasswordPage() {
               <div>
                 <label className="text-xs text-gray-400">Nouveau mot de passe</label>
                 <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={4}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
                   placeholder="Nouveau mot de passe" />
               </div>
               <div>
                 <label className="text-xs text-gray-400">Confirmer le mot de passe</label>
                 <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={4}
-                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
+                  className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
                   placeholder="Confirmer le mot de passe" />
               </div>
               <button type="submit" disabled={loading} className="w-full btn-primary py-3">
@@ -140,7 +140,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="mt-6 text-center">
-          <Link href="/login" className="text-sm text-red-400 hover:text-red-300 transition-colors">
+          <Link href="/login" className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
             &larr; Retour a la connexion
           </Link>
         </div>

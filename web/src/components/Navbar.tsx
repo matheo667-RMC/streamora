@@ -31,7 +31,7 @@ export function Navbar() {
   const userRole = (session?.user as unknown as Record<string, unknown>)?.role;
 
   return (
-    <nav className={`fixed top-0 z-50 w-full transition-all duration-500 ${scrolled ? "bg-[#0a0a0a]/95 backdrop-blur-md shadow-lg shadow-black/50" : "bg-gradient-to-b from-[#0a0a0a]/90 via-[#0a0a0a]/50 to-transparent"}`}>
+    <nav className={`fixed top-0 z-50 w-full transition-all duration-500 ${scrolled ? "bg-[#0f0f23]/95 backdrop-blur-md shadow-lg shadow-black/50" : "bg-gradient-to-b from-[#0f0f23]/90 via-[#0f0f23]/50 to-transparent"}`}>
       <div className="mx-auto flex h-14 sm:h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-5 sm:gap-8">
           <Link href="/" className="flex items-center gap-2 shrink-0">
@@ -42,7 +42,7 @@ export function Navbar() {
               height={32}
               className="rounded-lg"
             />
-            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-red-500 to-red-400 bg-clip-text text-transparent">
+            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               Streamora
             </span>
           </Link>
@@ -65,7 +65,7 @@ export function Navbar() {
             </Link>
 
             {userRole === "admin" && (
-              <Link href="/admin" className="rounded-md px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all">
+              <Link href="/admin" className="rounded-md px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-all">
                 Admin
               </Link>
             )}
@@ -79,7 +79,7 @@ export function Navbar() {
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-red-600 to-red-500 flex items-center justify-center text-xs font-bold ring-2 ring-transparent hover:ring-red-500/50 transition-all">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-xs font-bold ring-2 ring-transparent hover:ring-purple-500/50 transition-all">
                   {session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"}
                 </div>
                 <span className="hidden sm:block max-w-[100px] truncate text-sm">{session.user.name || session.user.email?.split("@")[0]}</span>
@@ -108,7 +108,7 @@ export function Navbar() {
                   </Link>
 
                   {userRole === "admin" && (
-                    <Link href="/admin" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-red-500/10" onClick={() => setMenuOpen(false)}>
+                    <Link href="/admin" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-purple-400 hover:bg-purple-500/10" onClick={() => setMenuOpen(false)}>
                       Admin
                     </Link>
                   )}
