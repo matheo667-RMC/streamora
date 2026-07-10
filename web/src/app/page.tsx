@@ -2,7 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
 import { HeroBanner } from "@/components/HeroBanner";
 import { Footer } from "@/components/Footer";
-import { ContinueWatching } from "@/components/ContinueWatching";
 import { MediaRow, RowItem } from "@/components/MediaRow";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +54,6 @@ export default async function HomePage() {
         <HeroBanner items={heroItems} />
 
         <div className="mx-auto max-w-[1500px] space-y-7 px-4 sm:px-6 pb-16 -mt-20 relative z-10">
-          <ContinueWatching />
 
           {films.length > 0 && (
             <MediaRow title="Tendances · Films" href="/films" items={films.slice(0, 18).map(filmItem)} />

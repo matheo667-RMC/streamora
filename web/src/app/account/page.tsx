@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
+import { ContinueWatching } from "@/components/ContinueWatching";
 
 export default function AccountPage() {
   const { data: session, status } = useSession();
@@ -197,6 +198,13 @@ export default function AccountPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Watch history */}
+          <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 mb-6">
+            <h2 className="text-lg font-semibold mb-1">Mon historique</h2>
+            <p className="text-sm text-gray-400 mb-4">Reprends tes films et séries là où tu t&apos;es arrêté.</p>
+            <ContinueWatching />
           </div>
 
           {/* Change password */}
