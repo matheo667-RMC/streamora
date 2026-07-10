@@ -10,17 +10,33 @@ export async function GET(request: Request) {
   const ref = searchParams.get("ref");
   if (!ref) return new Response("Missing ref", { status: 400 });
 
-  const embedUrl = `https://streamzo.fr/embed/${ref.replace(/^\/+/, "")}`;
-  let html: string;
-  try {
-    const res = await fetch(embedUrl, {
-      headers: { "User-Agent": UA, Referer: "https://streamzo.fr/" },
-    });
-    if (!res.ok) return new Response("Embed not found", { status: 404 });
-    html = await res.text();
-  } catch {
-    return new Response("Upstream failed", { status: 502 });
+  async function fetchText(url: string): Promise<string | null> {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": UA, Referer: "https://streamzo.fr/" },
+      });
+      if (!res.ok) return null;
+      return await res.text();
+    } catch {
+      return null;
+    }
   }
+
+  // ref can be "slug:<film-slug>" (resolve the film page first to find the embed)
+  // or a direct embed path like "vidzy.live/4150" or "vidzy.live/episode/21071".
+  let embedPath = ref.replace(/^\/+/, "");
+  if (embedPath.startsWith("slug:")) {
+    const slug = embedPath.slice(5).replace(/^\/+/, "");
+    const page = await fetchText(`https://streamzo.fr/${slug}`);
+    if (!page) return new Response("Film not found", { status: 404 });
+    const em = page.match(/src="\/embed\/([^"]+)"/i);
+    if (!em) return new Response("No embed", { status: 404 });
+    embedPath = em[1];
+  }
+
+  const embedUrl = `https://streamzo.fr/embed/${embedPath}`;
+  const html = await fetchText(embedUrl);
+  if (!html) return new Response("Embed not found", { status: 404 });
 
   const m =
     html.match(/https?:\/\/[^"'\s\\]+master\.m3u8[^"'\s\\]*/i) ||
