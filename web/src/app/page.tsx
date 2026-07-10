@@ -1,170 +1,78 @@
-import Link from "next/link";
-import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
 import { HeroBanner } from "@/components/HeroBanner";
 import { Footer } from "@/components/Footer";
-import { HomeCategoryFilter } from "@/components/HomeCategoryFilter";
 import { ContinueWatching } from "@/components/ContinueWatching";
+import { MediaRow, RowItem } from "@/components/MediaRow";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  type FilmWithCount = Awaited<ReturnType<typeof prisma.film.findMany>>[number] & { _count: { downloads: number } };
-  type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
-  let latestFilms: FilmWithCount[] = [];
-  let latestSeries: SeriesWithCount[] = [];
-  let filmCategories: string[] = [];
-  let seriesCategories: string[] = [];
+  type FilmRow = { id: string; title: string; description: string; category: string | null; posterUrl: string | null; year: number | null; duration: string | null };
+  type SeriesRow = { id: string; title: string; description: string; category: string | null; posterUrl: string | null; year: number | null; episodes: number };
+
+  let films: FilmRow[] = [];
+  let series: SeriesRow[] = [];
 
   try {
-    const [f, s, fc, sc] = await Promise.all([
-      prisma.film.findMany({
-        take: 20,
-        orderBy: { createdAt: "desc" },
-        include: { _count: { select: { downloads: true } } },
-      }),
-      prisma.series.findMany({
-        take: 20,
-        orderBy: { createdAt: "desc" },
-        include: { _count: { select: { episodes: true } } },
-      }),
-      prisma.film.findMany({ select: { category: true }, distinct: ["category"] }),
-      prisma.series.findMany({ select: { category: true }, distinct: ["category"] }),
+    const [f, s] = await Promise.all([
+      prisma.film.findMany({ where: { posterUrl: { not: "" } }, take: 400, orderBy: { createdAt: "desc" } }),
+      prisma.series.findMany({ where: { posterUrl: { not: "" } }, take: 200, orderBy: { createdAt: "desc" }, include: { _count: { select: { episodes: true } } } }),
     ]);
-    latestFilms = f as FilmWithCount[];
-    latestSeries = s as SeriesWithCount[];
-    filmCategories = fc.map(c => c.category).filter(Boolean);
-    seriesCategories = sc.map(c => c.category).filter(Boolean);
+    films = f.map((x) => ({ id: x.id, title: x.title, description: x.description, category: x.category, posterUrl: x.posterUrl, year: x.year, duration: x.duration }));
+    series = (s as (typeof s[number] & { _count: { episodes: number } })[]).map((x) => ({ id: x.id, title: x.title, description: x.description, category: x.category, posterUrl: x.posterUrl, year: x.year, episodes: x._count.episodes }));
   } catch {
     // Database not available yet
   }
 
   const heroItems = [
-    ...latestFilms
-      .filter((f) => f.posterUrl)
-      .slice(0, 5)
-      .map((f) => ({
-        id: f.id,
-        title: f.title,
-        description: f.description,
-        category: f.category,
-        posterUrl: f.posterUrl,
-        year: f.year,
-        duration: f.duration,
-        type: "film" as const,
-      })),
-    ...latestSeries
-      .filter((s) => s.posterUrl)
-      .slice(0, 3)
-      .map((s) => ({
-        id: s.id,
-        title: s.title,
-        description: s.description,
-        category: s.category,
-        posterUrl: s.posterUrl,
-        year: s.year,
-        type: "series" as const,
-      })),
+    ...films.slice(0, 5).map((f) => ({ id: f.id, title: f.title, description: f.description, category: f.category || "", posterUrl: f.posterUrl || "", year: f.year ?? 0, duration: f.duration || undefined, type: "film" as const })),
+    ...series.slice(0, 3).map((s) => ({ id: s.id, title: s.title, description: s.description, category: s.category || "", posterUrl: s.posterUrl || "", year: s.year ?? 0, type: "series" as const })),
   ];
+
+  const filmItem = (f: FilmRow): RowItem => ({ id: f.id, title: f.title, posterUrl: f.posterUrl, category: f.category, kind: "films", badge: f.category || "Film" });
+  const seriesItem = (s: SeriesRow): RowItem => ({ id: s.id, title: s.title, posterUrl: s.posterUrl, category: s.category, kind: "series", badge: `${s.episodes} ép` });
+
+  // Group films by category, keep the biggest ones -> Netflix-style genre rows.
+  const byCat = new Map<string, FilmRow[]>();
+  for (const f of films) {
+    const c = f.category || "Autres";
+    if (!byCat.has(c)) byCat.set(c, []);
+    byCat.get(c)!.push(f);
+  }
+  const genreRows = Array.from(byCat.entries())
+    .filter(([, arr]) => arr.length >= 4)
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 8)
+    .map(([cat, arr]) => ({ cat, items: arr.slice(0, 18).map(filmItem) }));
+
+  const hasContent = films.length > 0 || series.length > 0;
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-[#1a1a2e]">
+      <div className="min-h-screen bg-[#0f0f1a]">
         <HeroBanner items={heroItems} />
 
-        <div className="mx-auto max-w-[1400px] space-y-8 px-4 sm:px-6 pb-16 -mt-16 relative z-10">
-          {/* Continue Watching */}
+        <div className="mx-auto max-w-[1500px] space-y-7 px-4 sm:px-6 pb-16 -mt-20 relative z-10">
           <ContinueWatching />
 
-          {/* Derniers Films */}
-          {latestFilms.length > 0 && (
-            <section className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
-              <div className="flex flex-wrap items-center gap-3 mb-5">
-                <Link href="/films" className="shrink-0 flex items-center gap-1.5 rounded-md bg-purple-600 px-4 py-2 text-sm font-bold text-white hover:bg-purple-500 transition-colors">
-                  Derniers Films
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-                <HomeCategoryFilter categories={filmCategories} section="films" />
-                <Link href="/films" className="ml-auto shrink-0 flex items-center gap-1 rounded-md bg-purple-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-500 transition-colors">
-                  Voir La Suite...
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-              </div>
-
-              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide" id="films-row">
-                {latestFilms.map((film) => (
-                  <Link key={film.id} href={`/films/${film.id}`} className="flex-none w-[130px] sm:w-[150px] md:w-[170px] group" data-category={film.category}>
-                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-purple-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-purple-900/30">
-                      {film.posterUrl ? (
-                        <Image src={film.posterUrl} alt={film.title} fill className="object-cover" sizes="170px" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
-                          <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                          </svg>
-                        </div>
-                      )}
-                      {/* HD badge */}
-                      <div className="absolute top-1.5 left-1.5">
-                        <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[9px] font-bold leading-none">HD</span>
-                      </div>
-                      {/* Category badge */}
-                      <div className="absolute top-1.5 right-1.5">
-                        <span className="rounded bg-pink-600/90 px-1.5 py-0.5 text-[9px] font-bold leading-none">{film.category || "Film"}</span>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-xs sm:text-sm text-center text-gray-300 line-clamp-2 group-hover:text-white transition-colors">{film.title}</p>
-                  </Link>
-                ))}
-              </div>
-            </section>
+          {films.length > 0 && (
+            <MediaRow title="Tendances · Films" href="/films" items={films.slice(0, 18).map(filmItem)} />
+          )}
+          {series.length > 0 && (
+            <MediaRow title="Séries populaires" href="/series" items={series.slice(0, 18).map(seriesItem)} />
           )}
 
-          {/* Dernières Séries */}
-          {latestSeries.length > 0 && (
-            <section className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
-              <div className="flex flex-wrap items-center gap-3 mb-5">
-                <Link href="/series" className="shrink-0 flex items-center gap-1.5 rounded-md bg-purple-600 px-4 py-2 text-sm font-bold text-white hover:bg-purple-500 transition-colors">
-                  Dernières Séries
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-                <HomeCategoryFilter categories={seriesCategories} section="series" />
-                <Link href="/series" className="ml-auto shrink-0 flex items-center gap-1 rounded-md bg-purple-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-500 transition-colors">
-                  Voir La Suite...
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </Link>
-              </div>
+          {genreRows.map((g) => (
+            <MediaRow key={g.cat} title={g.cat} href={`/films?category=${encodeURIComponent(g.cat)}`} items={g.items} />
+          ))}
 
-              <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide" id="series-row">
-                {latestSeries.map((s) => (
-                  <Link key={s.id} href={`/series/${s.id}`} className="flex-none w-[130px] sm:w-[150px] md:w-[170px] group" data-category={s.category}>
-                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-purple-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-purple-900/30">
-                      {s.posterUrl ? (
-                        <Image src={s.posterUrl} alt={s.title} fill className="object-cover" sizes="170px" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
-                          <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                          </svg>
-                        </div>
-                      )}
-                      {/* Episode count badge */}
-                      <div className="absolute top-1.5 left-1.5 flex flex-col items-center">
-                        <span className="rounded-t bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
-                        <span className="rounded-b bg-purple-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{s._count.episodes}</span>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-xs sm:text-sm text-center text-gray-300 line-clamp-2 group-hover:text-white transition-colors">{s.title}</p>
-                  </Link>
-                ))}
-              </div>
-            </section>
+          {series.length > 6 && (
+            <MediaRow title="À découvrir · Séries" href="/series" items={series.slice(6, 24).map(seriesItem)} />
           )}
 
-          {/* Empty state */}
-          {latestFilms.length === 0 && latestSeries.length === 0 && (
+          {!hasContent && (
             <div className="rounded-2xl border border-white/5 bg-[#16213e]/80 p-10 sm:p-16 text-center">
               <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-purple-500/10 flex items-center justify-center">
                 <svg className="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -172,7 +80,6 @@ export default async function HomePage() {
                 </svg>
               </div>
               <p className="text-gray-400">Aucun contenu disponible pour le moment.</p>
-              <p className="mt-2 text-sm text-gray-600">Les films et séries seront ajoutés bientôt.</p>
             </div>
           )}
         </div>
