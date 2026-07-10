@@ -126,4 +126,5 @@ model SiteSettings {
   maintenanceMode  Boolean @default(false)
   maintenanceMsg   String  @default("Streamora est en maintenance. Nous revenons bientôt !")
   maintenanceStyle String  @default("classic")
+  iptvAgentUrl     String  @default("")
 }
