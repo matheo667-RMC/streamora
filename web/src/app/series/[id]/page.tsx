@@ -29,7 +29,7 @@ export default async function SeriesDetailPage({ params }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#0d0d0d]">
+    <div className="min-h-screen bg-[#0f0f23]">
       <div className="pt-16 sm:pt-20">
         {/* Series info - papystreaming style */}
         <div className="mx-auto max-w-[1000px] px-4 sm:px-6">

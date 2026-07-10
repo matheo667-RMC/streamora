@@ -31,7 +31,7 @@ export default async function HomePage() {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-[#0d0d0d]">
+      <div className="min-h-screen bg-[#0f0f23]">
         <div className="mx-auto max-w-[1300px] px-4 sm:px-6 pt-24 pb-16 space-y-12">
 
           {/* Derniers Films */}

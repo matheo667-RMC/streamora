@@ -33,7 +33,7 @@ export default async function FilmDetailPage({ params }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#0d0d0d]">
+    <div className="min-h-screen bg-[#0f0f23]">
       <div className="pt-16 sm:pt-20">
         {/* Track watch history */}
         {(film.tmdbId || film.videoUrl) && (

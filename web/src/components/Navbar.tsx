@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 
@@ -30,29 +31,36 @@ export function Navbar() {
   const userRole = (session?.user as unknown as Record<string, unknown>)?.role;
 
   return (
-    <nav className={`fixed top-0 z-50 w-full transition-all duration-300 border-b ${scrolled ? "bg-[#0d0d0d] border-white/10 shadow-lg shadow-black/50" : "bg-[#0d0d0d]/95 backdrop-blur-md border-white/5"}`}>
+    <nav className={`fixed top-0 z-50 w-full transition-all duration-500 ${scrolled ? "bg-[#0f0f23]/95 backdrop-blur-md shadow-lg shadow-black/50" : "bg-gradient-to-b from-[#0f0f23]/90 via-[#0f0f23]/50 to-transparent"}`}>
       <div className="mx-auto flex h-14 sm:h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4 sm:gap-6">
-          <Link href="/" className="shrink-0">
-            <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#f5a623]">
-              STREAMORA
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <Image
+              src="/logo.png"
+              alt="Streamora"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
+            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Streamora
             </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-1 text-gray-300">
-            <Link href="/films" className="px-3 py-1.5 text-sm font-semibold hover:text-[#f5a623] transition-colors">
-              | Film |
+            <Link href="/films" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+              Film
             </Link>
-            <Link href="/series" className="px-3 py-1.5 text-sm font-semibold hover:text-[#f5a623] transition-colors">
-              | Série |
+            <Link href="/series" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+              Série
             </Link>
-            <Link href="/tv" className="px-3 py-1.5 text-sm font-semibold hover:text-[#f5a623] transition-colors">
-              | TV |
+            <Link href="/tv" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+              TV
             </Link>
 
             {userRole === "admin" && (
               <Link href="/admin" className="px-3 py-1.5 text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors">
-                | Admin |
+                Admin
               </Link>
             )}
           </div>
@@ -64,9 +72,9 @@ export function Navbar() {
               type="text"
               name="q"
               placeholder="Tapez votre recherche ici..."
-              className="w-full rounded-md bg-[#1c1c1c] border border-white/10 py-1.5 pl-3 pr-9 text-sm text-white placeholder-gray-500 focus:border-[#f5a623] focus:outline-none"
+              className="w-full rounded-md bg-white/5 border border-white/10 py-1.5 pl-3 pr-9 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
             />
-            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-[#f5a623]" aria-label="Rechercher">
+            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-purple-400" aria-label="Rechercher">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
             </button>
           </div>

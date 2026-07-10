@@ -64,7 +64,7 @@ export default async function SeriesPage({ searchParams }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#0d0d0d]">
+    <div className="min-h-screen bg-[#0f0f23]">
       <div className="relative pt-20 pb-6 px-4 sm:px-6">
         <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 to-transparent h-48" />
         <div className="relative mx-auto max-w-[1400px]">
