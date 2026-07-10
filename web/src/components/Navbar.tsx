@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 
@@ -31,46 +30,47 @@ export function Navbar() {
   const userRole = (session?.user as unknown as Record<string, unknown>)?.role;
 
   return (
-    <nav className={`fixed top-0 z-50 w-full transition-all duration-500 ${scrolled ? "bg-[#0f0f23]/95 backdrop-blur-md shadow-lg shadow-black/50" : "bg-gradient-to-b from-[#0f0f23]/90 via-[#0f0f23]/50 to-transparent"}`}>
+    <nav className={`fixed top-0 z-50 w-full transition-all duration-300 border-b ${scrolled ? "bg-[#0d0d0d] border-white/10 shadow-lg shadow-black/50" : "bg-[#0d0d0d]/95 backdrop-blur-md border-white/5"}`}>
       <div className="mx-auto flex h-14 sm:h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-5 sm:gap-8">
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <Image
-              src="/logo.png"
-              alt="Streamora"
-              width={32}
-              height={32}
-              className="rounded-lg"
-            />
-            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Streamora
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link href="/" className="shrink-0">
+            <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#f5a623]">
+              STREAMORA
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-1">
-            <Link href="/" className="rounded-md px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all">
-              Accueil
+          <div className="hidden md:flex items-center gap-1 text-gray-300">
+            <Link href="/films" className="px-3 py-1.5 text-sm font-semibold hover:text-[#f5a623] transition-colors">
+              | Film |
             </Link>
-            <Link href="/films" className="rounded-md px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
-              Film
+            <Link href="/series" className="px-3 py-1.5 text-sm font-semibold hover:text-[#f5a623] transition-colors">
+              | Série |
             </Link>
-            <Link href="/series" className="rounded-md px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-              Série
-            </Link>
-            <Link href="/tv" className="rounded-md px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z" /></svg>
-              TV
+            <Link href="/tv" className="px-3 py-1.5 text-sm font-semibold hover:text-[#f5a623] transition-colors">
+              | TV |
             </Link>
 
             {userRole === "admin" && (
-              <Link href="/admin" className="rounded-md px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-all">
-                Admin
+              <Link href="/admin" className="px-3 py-1.5 text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors">
+                | Admin |
               </Link>
             )}
           </div>
         </div>
+
+        <form action="/films" method="GET" className="hidden sm:flex items-center flex-1 max-w-xs mx-4">
+          <div className="relative w-full">
+            <input
+              type="text"
+              name="q"
+              placeholder="Tapez votre recherche ici..."
+              className="w-full rounded-md bg-[#1c1c1c] border border-white/10 py-1.5 pl-3 pr-9 text-sm text-white placeholder-gray-500 focus:border-[#f5a623] focus:outline-none"
+            />
+            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-[#f5a623]" aria-label="Rechercher">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
+            </button>
+          </div>
+        </form>
 
         <div className="flex items-center gap-2" data-menu>
           {session?.user ? (
@@ -98,10 +98,10 @@ export function Navbar() {
                     Accueil
                   </Link>
                   <Link href="/films" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                    Films
+                    Film
                   </Link>
                   <Link href="/series" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                    Séries
+                    Série
                   </Link>
                   <Link href="/tv" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
                     TV
