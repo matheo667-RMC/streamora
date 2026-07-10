@@ -8,6 +8,7 @@ import { MultiServerPlayer } from "@/components/MultiServerPlayer";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TrackWatch } from "@/components/TrackWatch";
+import { ReportBroken } from "@/components/ReportBroken";
 
 interface Props {
   params: { id: string };
@@ -124,6 +125,9 @@ export default async function FilmDetailPage({ params }: Props) {
                     </svg>
                     Retour
                   </Link>
+                </div>
+                <div className="mt-3">
+                  <ReportBroken type="film" id={film.id} />
                 </div>
               </div>
             </div>

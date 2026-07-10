@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { VideoPlayer } from "./VideoPlayer";
 import { MultiServerPlayer } from "./MultiServerPlayer";
 import { addToHistory, getLastWatchedForSeries, WatchHistoryItem } from "@/lib/watch-history";
+import { ReportBroken } from "./ReportBroken";
 
 interface Episode {
   id: string;
@@ -133,17 +134,20 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
               <span className="mx-2 text-gray-600">—</span>
               <span className="text-white">{playingEp.title || `Episode ${playingEp.number}`}</span>
             </p>
-            {nextEp ? (
-              <button
-                onClick={() => { setActiveSeason(nextEp.season); handlePlayEp(nextEp); }}
-                className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 transition-colors"
-              >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 5v14l8-7zM13 5v14l8-7z" /></svg>
-                Épisode suivant
-              </button>
-            ) : playingEp.duration && (
-              <span className="text-xs text-gray-500">{playingEp.duration}</span>
-            )}
+            <div className="flex items-center gap-4">
+              {!seriesTmdbId && <ReportBroken type="episode" id={playingEp.id} seriesId={seriesId} />}
+              {nextEp ? (
+                <button
+                  onClick={() => { setActiveSeason(nextEp.season); handlePlayEp(nextEp); }}
+                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 5v14l8-7zM13 5v14l8-7z" /></svg>
+                  Épisode suivant
+                </button>
+              ) : playingEp.duration && (
+                <span className="text-xs text-gray-500">{playingEp.duration}</span>
+              )}
+            </div>
           </div>
         </div>
       )}
