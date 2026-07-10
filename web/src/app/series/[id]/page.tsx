@@ -29,11 +29,11 @@ export default async function SeriesDetailPage({ params }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#1a1a2e]">
+    <div className="min-h-screen bg-[#0d0d0d]">
       <div className="pt-16 sm:pt-20">
         {/* Series info - papystreaming style */}
         <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
-          <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
+          <div className="rounded-xl border border-white/5 bg-[#151515]/80 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row gap-5">
               {/* Poster */}
               <div className="shrink-0 self-start">
@@ -113,7 +113,7 @@ export default async function SeriesDetailPage({ params }: Props) {
               poster={series.posterUrl || undefined}
             />
           ) : (
-            <div className="mt-8 rounded-xl border border-white/5 bg-[#16213e]/80 p-12 text-center">
+            <div className="mt-8 rounded-xl border border-white/5 bg-[#151515]/80 p-12 text-center">
               <p className="text-gray-400">Aucun épisode disponible pour le moment.</p>
             </div>
           )}

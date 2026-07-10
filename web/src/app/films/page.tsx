@@ -48,7 +48,7 @@ export default async function FilmsPage({ searchParams }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#1a1a2e]">
+    <div className="min-h-screen bg-[#0d0d0d]">
       <div className="relative pt-20 pb-6 px-4 sm:px-6">
         <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 to-transparent h-48" />
         <div className="relative mx-auto max-w-[1400px]">
@@ -98,7 +98,7 @@ export default async function FilmsPage({ searchParams }: Props) {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-12 text-center">
+          <div className="rounded-xl border border-white/5 bg-[#151515]/80 p-12 text-center">
             <p className="text-gray-400">Aucun film trouvé.</p>
           </div>
         )}

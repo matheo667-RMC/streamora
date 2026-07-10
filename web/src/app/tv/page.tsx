@@ -61,7 +61,7 @@ export default function TVPage() {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#1a1a2e] text-white">
+    <div className="min-h-screen bg-[#0d0d0d] text-white">
       {/* Header */}
       <div className="px-6 pt-24 pb-4">
         <h1 className="text-3xl font-bold mb-2">

@@ -32,7 +32,7 @@ export default async function FilmDetailPage({ params }: Props) {
   return (
     <>
     <Navbar />
-    <div className="min-h-screen bg-[#1a1a2e]">
+    <div className="min-h-screen bg-[#0d0d0d]">
       <div className="pt-16 sm:pt-20">
         {/* Track watch history */}
         {(film.tmdbId || film.videoUrl) && (
@@ -61,7 +61,7 @@ export default async function FilmDetailPage({ params }: Props) {
 
         {/* Film info - papystreaming style: poster left + details right */}
         <div className="mx-auto max-w-[1000px] px-4 sm:px-6 mt-6">
-          <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
+          <div className="rounded-xl border border-white/5 bg-[#151515]/80 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row gap-5">
               {/* Poster */}
               <div className="shrink-0 self-start">
@@ -133,7 +133,7 @@ export default async function FilmDetailPage({ params }: Props) {
         {/* Related films grid */}
         {relatedFilms.length > 0 && (
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 mt-8 pb-16">
-            <div className="rounded-xl border border-white/5 bg-[#16213e]/80 p-4 sm:p-6">
+            <div className="rounded-xl border border-white/5 bg-[#151515]/80 p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-5">
                 <h2 className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-bold">
                   Films similaires
