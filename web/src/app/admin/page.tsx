@@ -51,8 +51,6 @@ export default function AdminPage() {
   const [tab, setTab] = useState<"dashboard" | "films" | "series" | "users" | "convert">("dashboard");
 
   // Video converter
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [convertedUrls, setConvertedUrls] = useState<{ fileName: string; url: string; size: string }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
@@ -266,48 +264,6 @@ export default function AdminPage() {
     loadData();
   }
 
-  function formatFileSize(bytes: number) {
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
-  }
-
-  function uploadVideoFile(file: File) {
-    const videoExts = /\.(mp4|webm|ogg|avi|mkv|mov|flv|wmv|m4v)$/i;
-    if (!file.type.startsWith("video/") && !videoExts.test(file.name)) {
-      setUploadError("Ce fichier n'est pas une video. Formats : MP4, MKV, AVI, WebM...");
-      return;
-    }
-    setUploadingVideo(true);
-    setUploadProgress(0);
-    setUploadError(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
-    });
-    xhr.addEventListener("load", () => {
-      setUploadingVideo(false);
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (data.success && data.id) {
-            setConvertedUrls(prev => [{ fileName: file.name, url: `https://pixeldrain.com/api/file/${data.id}`, size: formatFileSize(file.size) }, ...prev]);
-          } else {
-            setUploadError(data.message || "Erreur lors de l'upload");
-          }
-        } catch { setUploadError("Reponse invalide du serveur"); }
-      } else { setUploadError(`Erreur ${xhr.status}: fichier trop gros ou probleme serveur`); }
-    });
-    xhr.addEventListener("error", () => { setUploadingVideo(false); setUploadError("Erreur reseau"); });
-    xhr.open("POST", "/api/upload-video");
-    xhr.send(formData);
-  }
-
   function convertDriveUrl(url: string) {
     setUploadError(null);
     // Extract Google Drive file ID from various URL formats
@@ -511,41 +467,41 @@ export default function AdminPage() {
             <div className="space-y-6">
               <div className="text-center mb-2">
                 <h2 className="text-xl font-bold">Video <span className="text-red-500">&rarr;</span> URL</h2>
-                <p className="text-sm text-gray-400 mt-1">Glisse ta video ici pour obtenir un lien direct</p>
+                <p className="text-sm text-gray-400 mt-1">Transforme ton film en lien pour l&apos;ajouter au site</p>
               </div>
 
-              {/* Drop zone */}
-              <div
-                className={`relative rounded-2xl border-2 border-dashed p-10 sm:p-14 text-center transition-all cursor-pointer ${
-                  uploadingVideo
-                    ? "border-red-500/50 bg-red-500/5"
-                    : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
-                }`}
-                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-red-500", "bg-red-500/10"); }}
-                onDragLeave={(e) => { e.preventDefault(); e.currentTarget.classList.remove("border-red-500", "bg-red-500/10"); }}
-                onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("border-red-500", "bg-red-500/10"); if (e.dataTransfer.files[0]) uploadVideoFile(e.dataTransfer.files[0]); }}
-                onClick={() => { if (!uploadingVideo) { const inp = document.createElement("input"); inp.type = "file"; inp.accept = "video/*"; inp.onchange = () => { if (inp.files?.[0]) uploadVideoFile(inp.files[0]); }; inp.click(); } }}
-              >
-                {uploadingVideo ? (
-                  <div className="space-y-4">
-                    <div className="mx-auto h-14 w-14 rounded-full border-4 border-red-500 border-t-transparent animate-spin" />
-                    <p className="text-lg font-medium">Upload en cours... {uploadProgress}%</p>
-                    <div className="mx-auto max-w-sm h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                    </div>
-                    <p className="text-xs text-gray-500">Ne ferme pas cette page</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="mx-auto h-14 w-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
-                      <svg className="h-7 w-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                      </svg>
-                    </div>
-                    <p className="text-lg font-medium">Glisse ta video ici</p>
-                    <p className="text-sm text-gray-500">ou clique pour selectionner &bull; MP4, MKV, AVI, WebM...</p>
-                  </div>
-                )}
+              {/* Google Drive converter - PRIMARY method */}
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7.71 3.5L1.15 15l4.58 7.5h13.54L12 3.5H7.71zm5.77 0l7.44 12.88-3.56 6.12H22l-4.48-7.5L12.48 3.5h1z" /></svg>
+                  <h3 className="font-bold text-base">Convertir un film via Google Drive</h3>
+                  <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Recommande</span>
+                </div>
+                <p className="text-xs text-gray-400 mb-4">La methode la plus fiable pour les gros films (permanent, gratuit, illimite)</p>
+
+                <ol className="space-y-2 mb-4 text-sm text-gray-300">
+                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center">1</span> Va sur <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="text-red-400 underline">drive.google.com</a> et upload ton film</li>
+                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center">2</span> Clic droit sur le film &rarr; <b>Partager</b> &rarr; mets <b>&laquo; Tous les utilisateurs disposant du lien &raquo;</b></li>
+                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-red-500/20 text-red-400 text-xs font-bold flex items-center justify-center">3</span> Copie le lien et colle-le ci-dessous</li>
+                </ol>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={driveUrl}
+                    onChange={e => setDriveUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/.../view"
+                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
+                    onKeyDown={e => { if (e.key === "Enter" && driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
+                  />
+                  <button
+                    onClick={() => { if (driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
+                    disabled={!driveUrl.trim()}
+                    className="shrink-0 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
+                  >
+                    Convertir
+                  </button>
+                </div>
               </div>
 
               {uploadError && (
@@ -557,32 +513,6 @@ export default function AdminPage() {
                 <div className="flex-1 h-px bg-white/10" />
                 <span className="text-xs text-gray-500 font-medium">OU</span>
                 <div className="flex-1 h-px bg-white/10" />
-              </div>
-
-              {/* Google Drive converter */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-                <h3 className="font-bold text-sm text-gray-300 mb-3 flex items-center gap-2">
-                  <svg className="h-4 w-4 text-red-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7.71 3.5L1.15 15l4.58 7.5h13.54L12 3.5H7.71zm5.77 0l7.44 12.88-3.56 6.12H22l-4.48-7.5L12.48 3.5h1z" /></svg>
-                  Convertir un lien Google Drive
-                </h3>
-                <p className="text-xs text-gray-500 mb-3">Pour les gros fichiers : upload ta video sur Google Drive, colle le lien ici</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={driveUrl}
-                    onChange={e => setDriveUrl(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/.../view"
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
-                    onKeyDown={e => { if (e.key === "Enter" && driveUrl.trim()) convertDriveUrl(driveUrl.trim()); }}
-                  />
-                  <button
-                    onClick={() => { if (driveUrl.trim()) convertDriveUrl(driveUrl.trim()); }}
-                    disabled={!driveUrl.trim()}
-                    className="shrink-0 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
-                  >
-                    Convertir
-                  </button>
-                </div>
               </div>
 
               {/* Paste any URL */}
@@ -660,15 +590,15 @@ export default function AdminPage() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">1</div>
-                    <p className="text-xs text-gray-400">Glisse ou selectionne ta video</p>
+                    <p className="text-xs text-gray-400">Upload ton film sur Google Drive et copie le lien de partage</p>
                   </div>
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">2</div>
-                    <p className="text-xs text-gray-400">La video est convertie en lien</p>
+                    <p className="text-xs text-gray-400">Colle le lien ici pour obtenir une URL de streaming</p>
                   </div>
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-sm">3</div>
-                    <p className="text-xs text-gray-400">Copie le lien et colle-le dans un film/serie</p>
+                    <p className="text-xs text-gray-400">Copie l&apos;URL et colle-la dans le champ Video d&apos;un film/serie</p>
                   </div>
                 </div>
               </div>
