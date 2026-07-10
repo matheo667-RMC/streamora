@@ -15,13 +15,13 @@ interface Server {
 // one plays on click; the second is a silent fallback surfaced only via a
 // discreet "autre lecteur" link so the UI stays clean (Papi-Streaming style).
 const MOVIE_SERVERS: Server[] = [
-  { id: "vidsrc", label: "Lecteur principal", fr: false, build: (id) => `https://vidsrc.to/embed/movie/${id}` },
-  { id: "2embed", label: "Lecteur 2", fr: false, build: (id) => `https://www.2embed.cc/embed/${id}` },
+  { id: "vidlink", label: "Lecteur principal", fr: false, build: (id) => `https://vidlink.pro/movie/${id}` },
+  { id: "vidsrc", label: "Lecteur 2", fr: false, build: (id) => `https://vidsrc.to/embed/movie/${id}` },
 ];
 
 const TV_SERVERS: Server[] = [
-  { id: "vidsrc", label: "Lecteur principal", fr: false, build: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
-  { id: "2embed", label: "Lecteur 2", fr: false, build: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
+  { id: "vidlink", label: "Lecteur principal", fr: false, build: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
+  { id: "vidsrc", label: "Lecteur 2", fr: false, build: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
 ];
 
 interface Props {
