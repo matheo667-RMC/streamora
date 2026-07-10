@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { tvChannels, TVChannel } from "@/lib/channels-data";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { IptvSection } from "@/components/IptvSection";
 
 export default function TVPage() {
   const [activeChannel, setActiveChannel] = useState<TVChannel | null>(null);
@@ -143,9 +142,6 @@ export default function TVPage() {
             )}
           </button>
         ))}
-      </div>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <IptvSection kind="live" />
       </div>
       <Footer />
     </div>

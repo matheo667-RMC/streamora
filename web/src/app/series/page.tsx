@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { FilmsFilter } from "@/components/FilmsFilter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { IptvSection } from "@/components/IptvSection";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +99,6 @@ export default async function SeriesPage({ searchParams }: Props) {
             <p className="text-gray-400">Aucune série trouvée.</p>
           </div>
         )}
-        <IptvSection kind="series" />
       </div>
 
       <Footer />

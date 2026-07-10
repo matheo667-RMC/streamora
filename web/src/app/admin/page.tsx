@@ -48,7 +48,7 @@ export default function AdminPage() {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminPin, setAdminPin] = useState("");
   const [pinError, setPinError] = useState("");
-  const [tab, setTab] = useState<"dashboard" | "films" | "series" | "users" | "convert" | "iptv">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "films" | "series" | "users" | "convert">("dashboard");
 
   // Video converter
   const [convertedUrls, setConvertedUrls] = useState<{ fileName: string; url: string; size: string }[]>([]);
@@ -103,11 +103,6 @@ export default function AdminPage() {
     setPosterResults([]);
   }
 
-  // IPTV agent
-  const [iptvUrl, setIptvUrl] = useState("");
-  const [iptvSaving, setIptvSaving] = useState(false);
-  const [iptvStatus, setIptvStatus] = useState<string>("");
-
   // Maintenance
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
@@ -119,7 +114,6 @@ export default function AdminPage() {
     fetch("/api/series").then(r => r.json()).then(setSeriesList).catch(() => {});
     fetch("/api/admin/users").then(r => r.json()).then(d => { if (Array.isArray(d)) setUsers(d); }).catch(() => {});
     fetch("/api/admin/maintenance").then(r => r.json()).then(d => { setMaintenance(d.maintenanceMode || false); setMaintenanceStyle(d.maintenanceStyle || "classic"); }).catch(() => {});
-    fetch("/api/iptv/config").then(r => r.json()).then(d => setIptvUrl(d.agentUrl || "")).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -297,7 +291,6 @@ export default function AdminPage() {
     { key: "series" as const, label: "Series", icon: "&#x1f4fa;" },
     { key: "users" as const, label: "Utilisateurs", icon: "&#x1f465;" },
     { key: "convert" as const, label: "Convertisseur", icon: "&#x1f517;" },
-    { key: "iptv" as const, label: "IPTV", icon: "&#x1f4e1;" },
   ];
 
   return (
@@ -608,67 +601,6 @@ export default function AdminPage() {
                     <p className="text-xs text-gray-400">Copie l&apos;URL et colle-la dans le champ Video d&apos;un film/serie</p>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── IPTV ── */}
-          {tab === "iptv" && (
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6">
-                <h3 className="mb-2 text-lg font-semibold flex items-center gap-2">
-                  <span>&#x1f4e1;</span> Agent IPTV maison
-                </h3>
-                <p className="mb-4 text-sm text-gray-400">
-                  Lance le programme <span className="font-mono text-purple-300">Streamora IPTV Agent</span> sur ton
-                  PC. Il t&apos;affiche un lien qui commence par <span className="font-mono">https://…trycloudflare.com</span>.
-                  Colle ce lien ici pour connecter ton IPTV à la page <span className="font-semibold">IPTV</span> du site.
-                </p>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <input
-                    value={iptvUrl}
-                    onChange={(e) => setIptvUrl(e.target.value)}
-                    placeholder="https://xxxx.trycloudflare.com"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-purple-500"
-                  />
-                  <button
-                    disabled={iptvSaving}
-                    onClick={async () => {
-                      setIptvSaving(true);
-                      setIptvStatus("");
-                      try {
-                        const res = await fetch("/api/iptv/config", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ agentUrl: iptvUrl }),
-                        });
-                        const d = await res.json();
-                        setIptvUrl(d.agentUrl || "");
-                        // test connectivity
-                        if (d.agentUrl) {
-                          try {
-                            const h = await fetch(`${d.agentUrl}/api/health`).then((r) => r.json());
-                            setIptvStatus(h.ok ? "Connecté ✓ (IPTV active)" : "Enregistré, mais l'IPTV ne répond pas.");
-                          } catch {
-                            setIptvStatus("Enregistré, mais l'agent ne répond pas. Vérifie qu'il tourne sur ton PC.");
-                          }
-                        } else {
-                          setIptvStatus("Lien effacé.");
-                        }
-                      } catch {
-                        setIptvStatus("Erreur d'enregistrement.");
-                      }
-                      setIptvSaving(false);
-                    }}
-                    className="rounded-lg bg-purple-600 px-6 py-2.5 text-sm font-semibold hover:bg-purple-500 disabled:opacity-50 whitespace-nowrap"
-                  >
-                    {iptvSaving ? "…" : "Enregistrer"}
-                  </button>
-                </div>
-                {iptvStatus && <p className="mt-3 text-sm text-purple-300">{iptvStatus}</p>}
-                <a href="/iptv" className="mt-4 inline-block text-sm text-purple-400 hover:text-purple-300">
-                  → Ouvrir la page IPTV
-                </a>
               </div>
             </div>
           )}

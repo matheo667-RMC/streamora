@@ -63,10 +63,6 @@ export function Navbar() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z" /></svg>
               TV
             </Link>
-            <Link href="/iptv" className="rounded-md px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
-              IPTV
-            </Link>
 
             {userRole === "admin" && (
               <Link href="/admin" className="rounded-md px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-all">
@@ -109,9 +105,6 @@ export function Navbar() {
                   </Link>
                   <Link href="/tv" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
                     TV
-                  </Link>
-                  <Link href="/iptv" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                    IPTV
                   </Link>
 
                   {userRole === "admin" && (
