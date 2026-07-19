@@ -141,6 +141,32 @@ model Download {
   createdAt DateTime @default(now())
 }
 
+model LibraryItem {
+  id        String   @id @default(cuid())
+  userId    String
+  mediaType String   // film | series
+  mediaId   String
+  status    String   // list | watched | later
+  createdAt DateTime @default(now())
+
+  @@unique([userId, mediaType, mediaId, status])
+  @@index([userId, status])
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  mediaType String   // film | series
+  mediaId   String
+  stars     Int      @default(0) // 1..5
+  review    String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, mediaType, mediaId])
+  @@index([mediaType, mediaId])
+}
+
 model SiteSettings {
   id               String  @id @default("main")
   maintenanceMode  Boolean @default(false)
@@ -162,4 +188,6 @@ model SiteSettings {
   priceLifetime    Float   @default(99.99)
   paywallEnabled   Boolean @default(false)
   maxAccountsPerIp Int     @default(2)
+  autoMaintenance  Boolean @default(false)   // weekly Sunday maintenance window
+  lastMaintenanceAt DateTime?
 }

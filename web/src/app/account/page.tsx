@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ContinueWatching } from "@/components/ContinueWatching";
+import { AccountExtras } from "@/components/AccountExtras";
 
 export default function AccountPage() {
   const { data: session, status } = useSession();
@@ -199,6 +200,9 @@ export default function AccountPage() {
               </div>
             </div>
           </div>
+
+          {/* Subscription, stats & library */}
+          <AccountExtras />
 
           {/* Watch history */}
           <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 mb-6">

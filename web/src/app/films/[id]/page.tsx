@@ -9,6 +9,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TrackWatch } from "@/components/TrackWatch";
 import { ReportBroken } from "@/components/ReportBroken";
+import { LibraryControls } from "@/components/LibraryControls";
 
 interface Props {
   params: { id: string };
@@ -130,6 +131,10 @@ export default async function FilmDetailPage({ params }: Props) {
                   <ReportBroken type="film" id={film.id} />
                 </div>
               </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/5 pt-5">
+              <LibraryControls mediaType="film" mediaId={film.id} />
             </div>
           </div>
         </div>

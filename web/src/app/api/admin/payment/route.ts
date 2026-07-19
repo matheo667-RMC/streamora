@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     priceLifetime: Number(b.priceLifetime ?? 99.99),
     paywallEnabled: !!b.paywallEnabled,
     maxAccountsPerIp: parseInt(String(b.maxAccountsPerIp ?? 2), 10) || 2,
+    autoMaintenance: !!b.autoMaintenance,
   };
   const s = await prisma.siteSettings.upsert({
     where: { id: "main" },

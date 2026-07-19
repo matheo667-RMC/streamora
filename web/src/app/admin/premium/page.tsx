@@ -7,7 +7,7 @@ interface Settings {
   btcAddress: string; ethAddress: string; usdtAddress: string;
   ltcAddress: string; trxAddress: string; solAddress: string;
   priceMonth1: number; priceMonth2: number; priceMonth6: number; priceLifetime: number;
-  paywallEnabled: boolean; maxAccountsPerIp: number;
+  paywallEnabled: boolean; maxAccountsPerIp: number; autoMaintenance: boolean;
 }
 
 interface Key {
@@ -106,6 +106,14 @@ export default function AdminPremium() {
               <div>
                 <div className="font-semibold">Activer le paiement (paywall)</div>
                 <div className="text-xs text-gray-400">Si activé, seuls les membres avec abonnement ou clé peuvent regarder. Toi (fondateur) = toujours gratuit.</div>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+              <input type="checkbox" checked={s.autoMaintenance} onChange={(e) => setS({ ...s, autoMaintenance: e.target.checked })} className="h-5 w-5 accent-purple-600" />
+              <div>
+                <div className="font-semibold">Maintenance automatique le dimanche</div>
+                <div className="text-xs text-gray-400">Le site passe en mode maintenance tous les dimanches (03h–05h UTC) pour les mises à jour.</div>
               </div>
             </label>
 

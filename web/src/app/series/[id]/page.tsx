@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
 import { EpisodePlayer } from "@/components/EpisodePlayer";
 import { Footer } from "@/components/Footer";
+import { LibraryControls } from "@/components/LibraryControls";
 
 interface Props {
   params: { id: string };
@@ -90,6 +91,10 @@ export default async function SeriesDetailPage({ params }: Props) {
                   </Link>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-6 border-t border-white/5 pt-5">
+              <LibraryControls mediaType="series" mediaId={series.id} />
             </div>
           </div>
         </div>

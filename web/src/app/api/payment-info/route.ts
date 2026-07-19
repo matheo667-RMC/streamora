@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // Public: payment tiers + wallet addresses + contact for the "Payer" page.
 export async function GET() {
   try {
