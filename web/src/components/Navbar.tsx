@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { NotificationsBell } from "@/components/NotificationsBell";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -57,6 +58,9 @@ export function Navbar() {
             <Link href="/tv" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
               TV
             </Link>
+            <Link href="/calendrier" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+              Calendrier
+            </Link>
             <Link href="/payer" className="px-3 py-1.5 text-sm font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent hover:from-purple-300 hover:to-pink-300 transition-colors">
               Premium
             </Link>
@@ -84,6 +88,7 @@ export function Navbar() {
         </form>
 
         <div className="flex items-center gap-2" data-menu>
+          {session?.user && <NotificationsBell />}
           {session?.user ? (
             <div className="relative">
               <button
