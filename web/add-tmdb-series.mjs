@@ -7,10 +7,8 @@ const TMDB_KEY = "4e2f8bed54601f3f2b98de4dc0dc7aa9";
 
 // TMDB TV ids requested by the user
 const SERIES_IDS = [
-  66732,  // Stranger Things
-  61852,  // Henry Danger (Kid Danger)
-  98066,  // Danger Force (Kid Danger spinoff)
-  54260,  // Sanjay and Craig
+  99583,  // Danger Force (Kid Danger spinoff)
+  61520,  // Sanjay et Craig
 ];
 
 async function tmdb(path) {

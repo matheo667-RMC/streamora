@@ -3,7 +3,8 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { SectionHeader, PosterCard, PosterItem } from "@/components/Papy";
+import { PosterItem } from "@/components/Papy";
+import { HomeBrowser } from "@/components/HomeBrowser";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,14 @@ export default async function HomePage() {
 
   const hasContent = films.length > 0 || series.length > 0;
 
+  // Netflix-style mixed row: films and series interleaved.
+  const latestMixed: PosterItem[] = [];
+  const maxLen = Math.max(films.length, series.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (films[i]) latestMixed.push(filmItem(films[i]));
+    if (series[i]) latestMixed.push(seriesItem(series[i]));
+  }
+
   return (
     <>
       <Navbar />
@@ -65,43 +74,15 @@ export default async function HomePage() {
           </section>
         )}
 
-        <div className={`mx-auto max-w-[1300px] px-4 sm:px-6 ${featured ? "pt-10" : "pt-24"} pb-16 space-y-12`}>
-
-          {/* Tendances de la semaine */}
-          {trending.length > 0 && (
-            <section>
-              <SectionHeader title="Tendances de la semaine" href="/films" />
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4">
-                {trending.map((f) => <PosterCard key={f.id} item={filmItem(f)} />)}
-              </div>
-            </section>
-          )}
-
-          {/* Derniers Films */}
-          <section>
-            <SectionHeader title="Derniers Films" href="/films" />
-            {films.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4">
-                {films.map((f) => <PosterCard key={f.id} item={filmItem(f)} />)}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">Aucun film pour le moment.</p>
-            )}
-          </section>
-
-          {/* Dernières Séries */}
-          <section>
-            <SectionHeader title="Dernières Séries" href="/series" />
-            {series.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4">
-                {series.map((s) => <PosterCard key={s.id} item={seriesItem(s)} />)}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">Aucune série pour le moment.</p>
-            )}
-          </section>
-
-          {!hasContent && (
+        <div className={`mx-auto max-w-[1300px] px-4 sm:px-6 ${featured ? "pt-10" : "pt-24"} pb-16`}>
+          {hasContent ? (
+            <HomeBrowser
+              trending={trending.map(filmItem)}
+              latest={latestMixed}
+              films={films.map(filmItem)}
+              series={series.map(seriesItem)}
+            />
+          ) : (
             <div className="rounded-2xl border border-white/5 bg-[#151515] p-10 sm:p-16 text-center">
               <p className="text-gray-400">Aucun contenu disponible pour le moment.</p>
             </div>
