@@ -70,6 +70,24 @@ model RedeemKey {
   createdAt  DateTime  @default(now())
 }
 
+model Order {
+  id          String   @id @default(cuid())
+  userId      String
+  planTier    String                          // month1 | month2 | month6 | lifetime
+  priceEur    Float    @default(0)
+  payCurrency String   @default("")           // btc | eth | usdttrc20 | ltc | trx | sol
+  paymentId   String   @unique                // NOWPayments payment_id
+  payAddress  String   @default("")
+  payAmount   String   @default("")
+  status      String   @default("waiting")    // NOWPayments status
+  delivered   Boolean  @default(false)
+  keyCode     String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
 model VerificationToken {
   identifier String
   token      String   @unique
