@@ -29,6 +29,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Anti-abuse: limit accounts per IP (founder exempt).
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    req.headers.get("x-real-ip") ||
+    "";
+  if (ip && email !== ADMIN_EMAIL) {
+    const settings = await prisma.siteSettings.findUnique({ where: { id: "main" } });
+    const max = settings?.maxAccountsPerIp ?? 2;
+    const fromIp = await prisma.user.count({ where: { signupIp: ip } });
+    if (fromIp >= max) {
+      return NextResponse.json(
+        { error: "Trop de comptes créés depuis ce réseau. Contacte le support." },
+        { status: 429 }
+      );
+    }
+  }
+
   const hashedPassword = await bcrypt.hash(password, 12);
   const role = email === ADMIN_EMAIL ? "admin" : "user";
 
@@ -38,6 +55,7 @@ export async function POST(req: NextRequest) {
       email,
       password: hashedPassword,
       role,
+      signupIp: ip || null,
     },
   });
 

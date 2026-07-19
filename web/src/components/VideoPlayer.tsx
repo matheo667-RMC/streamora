@@ -115,17 +115,77 @@ function StreamzoPlayer({ videoUrl, title, poster }: Props) {
   );
 }
 
-export function VideoPlayer({ videoUrl, title, poster }: Props) {
+function PlayerSwitch({ videoUrl, title, poster }: Props) {
   if (videoUrl.startsWith("streamzo:")) {
     return <StreamzoPlayer videoUrl={videoUrl} title={title} poster={poster} />;
   }
-
-  // If embed URL, render iframe directly
   if (isEmbedUrl(videoUrl)) {
     return <EmbedPlayer videoUrl={videoUrl} title={title} />;
   }
-
   return <NativeVideoPlayer videoUrl={videoUrl} title={title} poster={poster} />;
+}
+
+function PremiumGate() {
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1030] to-black flex items-center justify-center text-center px-6">
+      <div className="max-w-md">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-pink-600">
+          <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-bold text-white">Contenu réservé aux membres Premium</h3>
+        <p className="mt-2 text-sm text-gray-400">Abonne-toi ou entre une clé pour regarder films, séries et TV en illimité.</p>
+        <a href="/payer" className="mt-5 inline-block rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 text-sm font-semibold text-white hover:from-purple-500 hover:to-pink-500">
+          Voir les offres
+        </a>
+      </div>
+    </div>
+  );
+}
+
+export function VideoPlayer({ videoUrl, title, poster }: Props) {
+  const [gate, setGate] = useState<"loading" | "allow" | "block">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/payment-info").then((r) => r.json()).catch(() => ({ paywallEnabled: false })),
+      fetch("/api/subscription").then((r) => r.json()).catch(() => ({ hasAccess: false })),
+    ]).then(([pay, sub]) => {
+      if (cancelled) return;
+      if (!pay?.paywallEnabled || sub?.hasAccess) setGate("allow");
+      else setGate("block");
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Heartbeat: count watch time while a player is shown.
+  useEffect(() => {
+    if (gate !== "allow") return;
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetch("/api/watch-time", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seconds: 30 }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }, 30000);
+    return () => clearInterval(t);
+  }, [gate]);
+
+  if (gate === "loading") {
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black flex items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+      </div>
+    );
+  }
+  if (gate === "block") return <PremiumGate />;
+
+  return <PlayerSwitch videoUrl={videoUrl} title={title} poster={poster} />;
 }
 
 function NativeVideoPlayer({ videoUrl, title, poster }: Props) {

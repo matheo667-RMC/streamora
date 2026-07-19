@@ -44,10 +44,30 @@ model User {
   role          String    @default("user")
   twoFactorSecret  String?
   twoFactorEnabled Boolean  @default(false)
+  planTier      String    @default("free")   // free | month1 | month2 | month6 | lifetime
+  planExpiresAt DateTime?
+  badges        String    @default("")       // comma-separated custom badge labels
+  watchSeconds  Int       @default(0)        // total watch time in seconds
+  signupIp      String?
+  signupDevice  String?
   accounts      Account[]
   sessions      Session[]
   downloads     Download[]
+  redeemedKeys  RedeemKey[]
   createdAt     DateTime  @default(now())
+}
+
+model RedeemKey {
+  id         String    @id @default(cuid())
+  code       String    @unique               // e.g. Streamora-A1B2C3D4
+  planTier   String    @default("month1")    // month1 | month2 | month6 | lifetime
+  durationDays Int     @default(30)          // 0 = lifetime
+  used       Boolean   @default(false)
+  usedById   String?
+  usedBy     User?     @relation(fields: [usedById], references: [id], onDelete: SetNull)
+  usedAt     DateTime?
+  note       String    @default("")
+  createdAt  DateTime  @default(now())
 }
 
 model VerificationToken {
@@ -127,4 +147,19 @@ model SiteSettings {
   maintenanceMsg   String  @default("Streamora est en maintenance. Nous revenons bientôt !")
   maintenanceStyle String  @default("classic")
   iptvAgentUrl     String  @default("")
+  // Payment settings (admin-configurable)
+  paypalEmail      String  @default("")
+  telegramHandle   String  @default("")
+  btcAddress       String  @default("")
+  ethAddress       String  @default("")
+  usdtAddress      String  @default("")
+  ltcAddress       String  @default("")
+  trxAddress       String  @default("")
+  solAddress       String  @default("")
+  priceMonth1      Float   @default(5)
+  priceMonth2      Float   @default(8)
+  priceMonth6      Float   @default(20)
+  priceLifetime    Float   @default(99.99)
+  paywallEnabled   Boolean @default(false)
+  maxAccountsPerIp Int     @default(2)
 }

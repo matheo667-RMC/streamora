@@ -298,9 +298,14 @@ export default function AdminPage() {
       <Navbar />
       <div className="min-h-screen bg-black pt-20 px-4 pb-10">
         <div className="mx-auto max-w-6xl">
-          <h1 className="text-3xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Panneau Admin</span>
-          </h1>
+          <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+            <h1 className="text-3xl font-bold">
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Panneau Admin</span>
+            </h1>
+            <a href="/admin/premium" className="rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold">
+              Premium & Utilisateurs →
+            </a>
+          </div>
 
           {/* Tabs */}
           <div className="flex gap-1 mb-8 bg-gray-900/50 rounded-xl p-1 overflow-x-auto">
