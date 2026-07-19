@@ -11,7 +11,7 @@ export async function GET() {
   }
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { email: true, role: true, planTier: true, planExpiresAt: true, badges: true, watchSeconds: true },
+    select: { email: true, role: true, planTier: true, planExpiresAt: true, badges: true, watchSeconds: true, image: true },
   });
   const tier = (user?.planTier || "free") as PlanTier;
   return NextResponse.json({
@@ -23,5 +23,6 @@ export async function GET() {
     planExpiresAt: user?.planExpiresAt ?? null,
     badges: (user?.badges || "").split(",").map((b) => b.trim()).filter(Boolean),
     watchSeconds: user?.watchSeconds ?? 0,
+    image: user?.image ?? null,
   });
 }

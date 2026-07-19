@@ -6,8 +6,10 @@ import Image from "next/image";
 
 interface Sub {
   hasAccess: boolean; founder: boolean; planLabel: string;
-  planExpiresAt: string | null; badges: string[]; watchSeconds: number;
+  planExpiresAt: string | null; badges: string[]; watchSeconds: number; image: string | null;
 }
+
+const PRESET_AVATARS = ["🎬", "🍿", "🦸", "👾", "🐱", "🐉", "🚀", "🎮", "👑", "🎧", "🌙", "⚡"];
 interface Item { id: string; status: string; mediaType: string; mediaId: string; title: string; posterUrl: string }
 
 function fmtTime(sec: number) {
@@ -32,8 +34,49 @@ export function AccountExtras() {
 
   const byStatus = (s: string) => items.filter((i) => i.status === s);
 
+  async function setAvatar(a: string) {
+    const res = await fetch("/api/account/avatar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avatar: a }),
+    });
+    if (res.ok) setSub((prev) => (prev ? { ...prev, image: a } : prev));
+  }
+
+  const currentAvatar = sub?.image || "";
+
   return (
     <>
+      {/* Avatar */}
+      <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Mon avatar</h2>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-3xl overflow-hidden ring-2 ring-purple-500/30">
+            {currentAvatar.startsWith("http") ? (
+              <Image src={currentAvatar} alt="avatar" width={64} height={64} className="object-cover h-full w-full" />
+            ) : currentAvatar ? (
+              <span>{currentAvatar}</span>
+            ) : (
+              <span>🎬</span>
+            )}
+          </div>
+          <p className="text-sm text-gray-400">Choisis un avatar :</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {PRESET_AVATARS.map((a) => (
+            <button
+              key={a}
+              onClick={() => setAvatar(a)}
+              className={`h-11 w-11 rounded-full text-xl flex items-center justify-center transition-all ${
+                currentAvatar === a ? "bg-gradient-to-br from-purple-600 to-pink-600 scale-110" : "bg-white/10 hover:bg-white/20"
+              }`}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Subscription + stats */}
       <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Mon abonnement & statistiques</h2>
