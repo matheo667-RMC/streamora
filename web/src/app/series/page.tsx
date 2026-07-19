@@ -8,13 +8,13 @@ import { Footer } from "@/components/Footer";
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: { category?: string; q?: string; page?: string };
+  searchParams: { category?: string; q?: string; page?: string; year?: string; sort?: string };
 }
 
 const PER_PAGE = 60;
 
 export default async function SeriesPage({ searchParams }: Props) {
-  const { category, q } = searchParams;
+  const { category, q, year, sort } = searchParams;
   const page = Math.max(1, parseInt(searchParams.page || "1", 10) || 1);
 
   const where: Record<string, unknown> = {};
@@ -23,6 +23,18 @@ export default async function SeriesPage({ searchParams }: Props) {
   }
   if (q) {
     where.title = { contains: q };
+  }
+  const yearNum = year ? parseInt(year, 10) : NaN;
+  if (!isNaN(yearNum)) {
+    where.year = yearNum;
+  }
+
+  let orderBy: Record<string, string>[];
+  switch (sort) {
+    case "year_desc": orderBy = [{ year: "desc" }]; break;
+    case "year_asc": orderBy = [{ year: "asc" }]; break;
+    case "title": orderBy = [{ title: "asc" }]; break;
+    default: orderBy = [{ posterUrl: "desc" }, { createdAt: "desc" }];
   }
 
   type SeriesWithCount = Awaited<ReturnType<typeof prisma.series.findMany>>[number] & { _count: { episodes: number } };
@@ -34,7 +46,7 @@ export default async function SeriesPage({ searchParams }: Props) {
     total = await prisma.series.count({ where });
     series = await prisma.series.findMany({
       where,
-      orderBy: [{ posterUrl: "desc" }, { createdAt: "desc" }],
+      orderBy,
       skip: (page - 1) * PER_PAGE,
       take: PER_PAGE,
       include: { _count: { select: { episodes: true } } },
@@ -57,6 +69,8 @@ export default async function SeriesPage({ searchParams }: Props) {
     const sp = new URLSearchParams();
     if (category) sp.set("category", category);
     if (q) sp.set("q", q);
+    if (year) sp.set("year", year);
+    if (sort) sp.set("sort", sort);
     sp.set("page", String(p));
     return `/series?${sp.toString()}`;
   };
