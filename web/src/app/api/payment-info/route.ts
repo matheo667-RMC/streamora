@@ -25,7 +25,7 @@ export async function GET() {
         lifetime: s?.priceLifetime ?? 99.99,
       },
       paywallEnabled: s?.paywallEnabled ?? false,
-      autoPayEnabled: !!process.env.NOWPAYMENTS_API_KEY,
+      autoPayEnabled: !!process.env.STRIPE_SECRET_KEY,
     });
   } catch {
     return NextResponse.json({
