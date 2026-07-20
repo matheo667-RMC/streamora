@@ -143,10 +143,10 @@ export default function PayerPage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* On-site checkout via Stripe */}
+          {/* On-site checkout via PayPal */}
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
             <h2 className="text-lg font-bold mb-1">Payer {selMeta.label} — {price(selMeta.key).toFixed(2).replace(".00", "")}€</h2>
-            <p className="text-sm text-gray-400 mb-4">Paiement sécurisé par carte bancaire, Bancontact ou Revolut. Ta clé et ton accès sont livrés <b>automatiquement</b> dès le paiement.</p>
+            <p className="text-sm text-gray-400 mb-4">Paiement sécurisé via <b>PayPal</b> ou <b>carte bancaire</b>. Ta clé et ton accès sont livrés <b>automatiquement</b> dès le paiement. Abonnement numérique non remboursable.</p>
 
             {!sub?.authenticated ? (
               <a href="/login" className="block text-center rounded-lg bg-purple-600 px-4 py-3 text-sm font-semibold hover:bg-purple-500">

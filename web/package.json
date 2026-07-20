@@ -27,7 +27,6 @@
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "stripe": "^17.7.0",
     "tailwindcss": "^3.4.19",
     "typescript": "^6.0.3"
   },

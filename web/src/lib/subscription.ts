@@ -72,6 +72,14 @@ export async function grantPlan(userId: string, tier: Exclude<PlanTier, "free">)
   });
 }
 
+// Revoke a user's plan (e.g. after a refund): reset to free.
+export async function revokePlan(userId: string) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { planTier: "free", planExpiresAt: null },
+  });
+}
+
 // Generate a Streamora-XXXXXXXX key code (no ambiguous chars).
 export function generateKeyCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

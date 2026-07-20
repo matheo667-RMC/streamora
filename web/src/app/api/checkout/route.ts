@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { createCheckoutSession, paymentsEnabled } from "@/lib/payments";
+import { createPaypalOrder, paymentsEnabled } from "@/lib/payments";
 import { PlanTier } from "@/lib/subscription";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ const PLAN_PRICE_FIELD: Record<string, string> = {
   lifetime: "priceLifetime",
 };
 
-// Creates a Stripe Checkout session and returns its hosted payment URL.
+// Creates a PayPal order and returns its approval URL.
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    const cs = await createCheckoutSession({ priceEur, planTier: tier, orderId: order.id });
+    const pp = await createPaypalOrder({ priceEur, planTier: tier, orderId: order.id });
     const updated = await prisma.order.update({
       where: { id: order.id },
-      data: { paymentId: cs.id, status: "waiting" },
+      data: { paymentId: pp.id, status: "waiting" },
     });
-    return NextResponse.json({ paymentId: updated.paymentId, checkoutUrl: cs.url, priceEur });
+    return NextResponse.json({ orderId: order.id, paymentId: updated.paymentId, checkoutUrl: pp.url, priceEur });
   } catch (e) {
     await prisma.order.delete({ where: { id: order.id } }).catch(() => {});
     return NextResponse.json({ error: e instanceof Error ? e.message : "Erreur paiement" }, { status: 502 });
