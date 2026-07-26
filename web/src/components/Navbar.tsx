@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { Logo } from "@/components/Logo";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -36,13 +36,7 @@ export function Navbar() {
       <div className="mx-auto flex h-14 sm:h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4 sm:gap-6">
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <Image
-              src="/logo.png"
-              alt="Streamora"
-              width={32}
-              height={32}
-              className="rounded-lg"
-            />
+            <Logo size={34} className="drop-shadow-[0_2px_8px_rgba(168,85,247,0.5)]" />
             <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               Streamora
             </span>
