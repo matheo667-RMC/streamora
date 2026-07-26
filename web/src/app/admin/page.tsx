@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 
-const ADMIN_EMAIL = "matheofernandes5670@gmail.com";
+const ADMIN_EMAIL = "max350457@gmail.com";
 const ADMIN_PASSWORD = "2017";
 
 interface Film {

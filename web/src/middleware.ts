@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const ADMIN_EMAIL = "matheofernandes5670@gmail.com";
+const ADMIN_EMAIL = "max350457@gmail.com";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

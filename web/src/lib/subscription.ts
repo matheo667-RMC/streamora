@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 
-export const FOUNDER_EMAIL = "matheofernandes5670@gmail.com";
+export const FOUNDER_EMAIL = "max350457@gmail.com";
 
 export type PlanTier = "free" | "month1" | "month2" | "month6" | "lifetime";
 

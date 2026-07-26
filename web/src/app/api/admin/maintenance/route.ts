@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-const ADMIN_EMAIL = "matheofernandes5670@gmail.com";
+const ADMIN_EMAIL = "max350457@gmail.com";
 
 export async function GET() {
   try {

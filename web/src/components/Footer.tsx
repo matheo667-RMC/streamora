@@ -52,9 +52,10 @@ export function Footer() {
         <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} Streamora. Tous droits réservés.</p>
           <div className="flex items-center gap-1 text-xs text-gray-600">
-            <span>Fait avec</span>
+            <span>Créé avec</span>
             <span className="text-pink-500">&#9829;</span>
-            <span>pour le cinéma</span>
+            <span>par</span>
+            <span className="font-semibold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Max</span>
           </div>
         </div>
       </div>

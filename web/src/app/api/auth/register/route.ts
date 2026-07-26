@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-const ADMIN_EMAIL = "matheofernandes5670@gmail.com";
+const ADMIN_EMAIL = "max350457@gmail.com";
 
 export async function POST(req: NextRequest) {
   const { name, email, password } = await req.json();
