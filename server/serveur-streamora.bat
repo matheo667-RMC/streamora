@@ -32,8 +32,15 @@ REM 3) Lancer le serveur de fichiers dans une autre fenetre
 echo [*] Demarrage du serveur de fichiers...
 start "Streamora Media Server" cmd /k python streamora_server.py
 
-REM Laisser le temps au serveur de demarrer
-timeout /t 3 /nobreak >nul
+REM Attendre que le serveur reponde vraiment (le 1er lancement demande les lecteurs)
+echo [*] Attente du demarrage du serveur (indique tes lecteurs dans l'autre fenetre)...
+:waitloop
+powershell -Command "try{(Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:8090/api/files)|Out-Null;exit 0}catch{exit 1}" >nul 2>nul
+if errorlevel 1 (
+    timeout /t 2 /nobreak >nul
+    goto waitloop
+)
+echo [*] Serveur pret !
 
 echo.
 echo ==========================================

@@ -138,16 +138,23 @@ class MediaHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_HEAD(self):
-        self._serve_file(head_only=True)
+        try:
+            self._serve_file(head_only=True)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass
 
     def do_GET(self):
-        if self.path == "/" or self.path.startswith("/?"):
-            self._index_page()
-            return
-        if self.path == "/api/files" or self.path.startswith("/api/files?"):
-            self._list_files_json()
-            return
-        self._serve_file()
+        try:
+            if self.path == "/" or self.path.startswith("/?"):
+                self._index_page()
+                return
+            if self.path == "/api/files" or self.path.startswith("/api/files?"):
+                self._list_files_json()
+                return
+            self._serve_file()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # Le navigateur a coupe la connexion (avance rapide, pause...). Sans gravite.
+            pass
 
     def _all_files(self):
         """Yield (drive_index, rel_path, full_path, size) for every media file."""
