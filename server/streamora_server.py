@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """
 Streamora Media Server
-Sert les fichiers video depuis ton PC pour le site Streamora.
+Sert tes fichiers video depuis ton PC (et tes cles USB) pour le site Streamora.
 Fonctionne sur Windows, macOS et Linux.
 
 Usage:
   python streamora_server.py
 
-Par defaut, il sert les fichiers du dossier "media" a cote du script.
-Tu peux changer le dossier dans config.json ou au premier lancement.
+Au premier lancement, tu indiques un ou plusieurs dossiers/lecteurs
+(par exemple tes 2 cles USB : E:\\  et  F:\\).
+Ensuite, ouvre l'URL du serveur dans ton navigateur : tu vois la liste de
+tes films avec un bouton "Copier le lien" a coller sur Streamora.
 """
 
 import os
-import sys
 import json
 import mimetypes
 import re
+import html
 import urllib.parse
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from pathlib import Path
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 DEFAULT_PORT = 8090
@@ -29,6 +30,7 @@ ALLOWED_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
     ".srt", ".vtt", ".ass",
 }
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v", ".flv", ".wmv"}
 
 mimetypes.add_type("video/mp4", ".mp4")
 mimetypes.add_type("video/x-matroska", ".mkv")
@@ -42,8 +44,11 @@ mimetypes.add_type("text/vtt", ".vtt")
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (ValueError, OSError):
+            return {}
     return {}
 
 
@@ -52,39 +57,53 @@ def save_config(config):
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 
-def get_media_dir(config):
-    media_dir = config.get("media_dir", "")
-    if media_dir and os.path.isdir(media_dir):
-        return media_dir
+def get_media_dirs(config):
+    """Return a list of {label, path}. Supports multiple drives (2 USB keys)."""
+    dirs = config.get("media_dirs")
+    if isinstance(dirs, list) and dirs:
+        valid = [d for d in dirs if os.path.isdir(d.get("path", ""))]
+        if valid:
+            return valid
 
-    # Default: "media" folder next to script
-    default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
-    if not os.path.isdir(default):
-        os.makedirs(default, exist_ok=True)
+    # Backward compat: old single "media_dir"
+    single = config.get("media_dir", "")
+    if single and os.path.isdir(single):
+        return [{"label": "Disque 1", "path": single}]
 
+    # First launch: ask the user for one or more folders.
     print("\n=== Configuration du serveur Streamora ===")
-    print(f"Dossier par defaut: {default}")
-    user_input = input("Dossier des films/series (appuie Entree pour le defaut): ").strip()
+    print("Indique le(s) dossier(s) ou tes films sont rangés.")
+    print("Exemple avec 2 cles USB Windows : E:\\   puis   F:\\")
+    print("Appuie sur Entree (sans rien taper) pour terminer la liste.\n")
 
-    if user_input and os.path.isdir(user_input):
-        media_dir = user_input
-    elif user_input:
-        print(f"Le dossier '{user_input}' n'existe pas. Utilisation du dossier par defaut.")
-        media_dir = default
-    else:
-        media_dir = default
+    result = []
+    i = 1
+    while True:
+        prompt = f"Dossier/lecteur n°{i} (Entree pour finir): "
+        path = input(prompt).strip().strip('"')
+        if not path:
+            break
+        if os.path.isdir(path):
+            result.append({"label": f"Disque {i}", "path": path})
+            i += 1
+        else:
+            print(f"  ⚠ Le dossier '{path}' n'existe pas, ignore.")
 
-    config["media_dir"] = media_dir
+    if not result:
+        default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
+        os.makedirs(default, exist_ok=True)
+        print(f"Aucun dossier valide. Utilisation du dossier par defaut : {default}")
+        result = [{"label": "Disque 1", "path": default}]
+
+    config["media_dirs"] = result
     save_config(config)
-    return media_dir
+    return result
 
 
 def parse_range(range_header, file_size):
-    """Parse Range header and return (start, end)."""
     match = re.match(r"bytes=(\d*)-(\d*)", range_header)
     if not match:
         return 0, file_size - 1
-
     start_str, end_str = match.group(1), match.group(2)
     if start_str:
         start = int(start_str)
@@ -95,17 +114,16 @@ def parse_range(range_header, file_size):
     else:
         start = 0
         end = file_size - 1
-
     start = max(0, start)
     end = min(end, file_size - 1)
     return start, end
 
 
 class MediaHandler(BaseHTTPRequestHandler):
-    media_dir = ""
+    media_dirs = []  # list of {label, path}
     allowed_origins = "*"
 
-    def log_message(self, format, *args):
+    def log_message(self, fmt, *args):
         print(f"[{self.log_date_time_string()}] {args[0]}")
 
     def send_cors_headers(self):
@@ -123,32 +141,47 @@ class MediaHandler(BaseHTTPRequestHandler):
         self._serve_file(head_only=True)
 
     def do_GET(self):
-        # API: list files
+        if self.path == "/" or self.path.startswith("/?"):
+            self._index_page()
+            return
         if self.path == "/api/files" or self.path.startswith("/api/files?"):
-            self._list_files()
+            self._list_files_json()
             return
-
-        # API: server info
-        if self.path == "/api/info":
-            self._server_info()
-            return
-
-        # Serve file
         self._serve_file()
 
+    def _all_files(self):
+        """Yield (drive_index, rel_path, full_path, size) for every media file."""
+        for idx, d in enumerate(self.media_dirs):
+            base = d["path"]
+            for root, _dirs, filenames in os.walk(base):
+                for name in sorted(filenames):
+                    ext = os.path.splitext(name)[1].lower()
+                    if ext in ALLOWED_EXTENSIONS:
+                        full = os.path.join(root, name)
+                        rel = os.path.relpath(full, base).replace("\\", "/")
+                        yield idx, rel, full, os.path.getsize(full)
+
     def _resolve_path(self):
-        """Resolve URL path to a safe file path."""
+        """Resolve /media/<index>/<relpath> to a safe absolute path."""
         parsed = urllib.parse.urlparse(self.path)
         decoded = urllib.parse.unquote(parsed.path.lstrip("/"))
-        # Prevent directory traversal
-        safe = os.path.normpath(decoded)
+        parts = decoded.split("/", 2)
+        if len(parts) < 3 or parts[0] != "media":
+            return None
+        try:
+            idx = int(parts[1])
+        except ValueError:
+            return None
+        if idx < 0 or idx >= len(self.media_dirs):
+            return None
+        base = self.media_dirs[idx]["path"]
+        safe = os.path.normpath(parts[2])
         if safe.startswith("..") or os.path.isabs(safe):
             return None
-        full_path = os.path.join(self.media_dir, safe)
-        # Ensure it's within media_dir
-        real_media = os.path.realpath(self.media_dir)
+        full_path = os.path.join(base, safe)
+        real_base = os.path.realpath(base)
         real_path = os.path.realpath(full_path)
-        if not real_path.startswith(real_media):
+        if not real_path.startswith(real_base):
             return None
         return full_path
 
@@ -172,13 +205,11 @@ class MediaHandler(BaseHTTPRequestHandler):
 
         file_size = os.path.getsize(file_path)
         content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
-
-        # Range request support (essential for video streaming)
         range_header = self.headers.get("Range")
+
         if range_header:
             start, end = parse_range(range_header, file_size)
             content_length = end - start + 1
-
             self.send_response(206)
             self.send_cors_headers()
             self.send_header("Content-Type", content_type)
@@ -187,22 +218,8 @@ class MediaHandler(BaseHTTPRequestHandler):
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Cache-Control", "public, max-age=86400")
             self.end_headers()
-
             if not head_only:
-                chunk_size = 256 * 1024  # 256 KB chunks
-                with open(file_path, "rb") as f:
-                    f.seek(start)
-                    remaining = content_length
-                    while remaining > 0:
-                        read_size = min(chunk_size, remaining)
-                        data = f.read(read_size)
-                        if not data:
-                            break
-                        try:
-                            self.wfile.write(data)
-                        except (BrokenPipeError, ConnectionResetError):
-                            break
-                        remaining -= len(data)
+                self._stream(file_path, start, content_length)
         else:
             self.send_response(200)
             self.send_cors_headers()
@@ -211,106 +228,109 @@ class MediaHandler(BaseHTTPRequestHandler):
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Cache-Control", "public, max-age=86400")
             self.end_headers()
-
             if not head_only:
-                chunk_size = 256 * 1024
-                with open(file_path, "rb") as f:
-                    while True:
-                        data = f.read(chunk_size)
-                        if not data:
-                            break
-                        try:
-                            self.wfile.write(data)
-                        except (BrokenPipeError, ConnectionResetError):
-                            break
+                self._stream(file_path, 0, file_size)
 
-    def _list_files(self):
-        """List all media files in the directory."""
+    def _stream(self, file_path, start, length):
+        chunk_size = 256 * 1024
+        with open(file_path, "rb") as f:
+            f.seek(start)
+            remaining = length
+            while remaining > 0:
+                data = f.read(min(chunk_size, remaining))
+                if not data:
+                    break
+                try:
+                    self.wfile.write(data)
+                except (BrokenPipeError, ConnectionResetError):
+                    break
+                remaining -= len(data)
+
+    def _list_files_json(self):
         files = []
-        for root, _dirs, filenames in os.walk(self.media_dir):
-            for name in sorted(filenames):
-                ext = os.path.splitext(name)[1].lower()
-                if ext in ALLOWED_EXTENSIONS:
-                    full = os.path.join(root, name)
-                    rel = os.path.relpath(full, self.media_dir).replace("\\", "/")
-                    size = os.path.getsize(full)
-                    files.append({
-                        "path": rel,
-                        "name": name,
-                        "size": size,
-                        "size_mb": round(size / (1024 * 1024), 1),
-                        "type": mimetypes.guess_type(name)[0] or "unknown",
-                    })
-
+        for idx, rel, _full, size in self._all_files():
+            files.append({
+                "url": f"/media/{idx}/{urllib.parse.quote(rel)}",
+                "name": os.path.basename(rel),
+                "path": rel,
+                "size_mb": round(size / (1024 * 1024), 1),
+            })
         self.send_response(200)
         self.send_cors_headers()
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps({"files": files, "count": len(files)}, ensure_ascii=False).encode())
 
-    def _server_info(self):
-        """Return server info."""
-        total_size = 0
-        file_count = 0
-        for root, _dirs, filenames in os.walk(self.media_dir):
-            for name in filenames:
-                ext = os.path.splitext(name)[1].lower()
-                if ext in ALLOWED_EXTENSIONS:
-                    total_size += os.path.getsize(os.path.join(root, name))
-                    file_count += 1
-
-        info = {
-            "name": "Streamora Media Server",
-            "version": "1.0.0",
-            "media_dir": self.media_dir,
-            "files": file_count,
-            "total_size_gb": round(total_size / (1024 ** 3), 2),
-        }
+    def _index_page(self):
+        rows = []
+        for idx, rel, _full, size in self._all_files():
+            ext = os.path.splitext(rel)[1].lower()
+            if ext not in VIDEO_EXTENSIONS:
+                continue
+            url_path = f"/media/{idx}/{urllib.parse.quote(rel)}"
+            name = html.escape(os.path.basename(rel))
+            rows.append(
+                f'<tr><td>{name}</td><td class="s">{round(size/(1024*1024),1)} Mo</td>'
+                f'<td><button class="c" data-u="{html.escape(url_path)}">Copier le lien</button></td></tr>'
+            )
+        body = "\n".join(rows) or '<tr><td colspan="3">Aucun film trouvé. Ajoute des .mp4 dans tes dossiers puis rafraîchis.</td></tr>'
+        page = """<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streamora — Mes fichiers</title>
+<style>
+body{font-family:system-ui,Arial,sans-serif;background:#0f0f23;color:#eee;margin:0;padding:24px}
+h1{color:#a855f7}p{color:#aaa}
+table{width:100%;border-collapse:collapse;margin-top:16px}
+td,th{padding:10px;border-bottom:1px solid #ffffff14;text-align:left;font-size:14px}
+.s{color:#888;white-space:nowrap}
+button.c{background:#7c3aed;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600}
+button.c:hover{background:#9333ea}
+.ok{background:#16a34a!important}
+</style></head><body>
+<h1>Streamora — Mes fichiers</h1>
+<p>Clique sur « Copier le lien », puis colle-le dans Streamora (admin → ajouter un film → URL vidéo).</p>
+<table><thead><tr><th>Fichier</th><th>Taille</th><th>Lien</th></tr></thead>
+<tbody>__ROWS__</tbody></table>
+<script>
+document.querySelectorAll('button.c').forEach(function(b){
+  b.addEventListener('click',function(){
+    var url=location.origin+b.dataset.u;
+    navigator.clipboard.writeText(url).then(function(){
+      var t=b.textContent;b.textContent='Copié !';b.classList.add('ok');
+      setTimeout(function(){b.textContent=t;b.classList.remove('ok');},1500);
+    });
+  });
+});
+</script></body></html>""".replace("__ROWS__", body)
+        data = page.encode("utf-8")
         self.send_response(200)
         self.send_cors_headers()
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
         self.end_headers()
-        self.wfile.write(json.dumps(info, ensure_ascii=False).encode())
+        self.wfile.write(data)
 
 
 def main():
     config = load_config()
-    media_dir = get_media_dir(config)
+    media_dirs = get_media_dirs(config)
     port = config.get("port", DEFAULT_PORT)
 
-    MediaHandler.media_dir = media_dir
+    MediaHandler.media_dirs = media_dirs
     MediaHandler.allowed_origins = config.get("allowed_origins", "*")
 
-    server = HTTPServer(("0.0.0.0", port), MediaHandler)
+    server = ThreadingHTTPServer(("0.0.0.0", port), MediaHandler)
 
-    print(f"""
-╔══════════════════════════════════════════════════════╗
-║          Streamora Media Server                      ║
-╠══════════════════════════════════════════════════════╣
-║  Dossier : {media_dir:<41s}║
-║  Port    : {port:<41d}║
-║  URL     : http://localhost:{port:<24d}║
-╠══════════════════════════════════════════════════════╣
-║  API:                                                ║
-║    /api/files  - Liste tous les fichiers             ║
-║    /api/info   - Info du serveur                     ║
-║                                                      ║
-║  Pour acceder a un fichier:                          ║
-║    http://localhost:{port}/Films/MonFilm.mp4{' ' * (10 - len(str(port)))}║
-║                                                      ║
-║  Ctrl+C pour arreter                                 ║
-╚══════════════════════════════════════════════════════╝
-""")
-    print(f"Organisation de ton dossier suggeree:")
-    print(f"  {media_dir}/")
-    print(f"    Films/")
-    print(f"      Inception.mp4")
-    print(f"      Avatar.mp4")
-    print(f"    Series/")
-    print(f"      Breaking Bad/")
-    print(f"        S01E01.mp4")
-    print(f"        S01E02.mp4")
-    print()
+    print("\n==========================================")
+    print("        Streamora Media Server")
+    print("==========================================")
+    for i, d in enumerate(media_dirs):
+        print(f"  Disque {i}: {d['path']}")
+    print(f"  Port   : {port}")
+    print(f"  Ouvre dans ton navigateur : http://localhost:{port}")
+    print("  (liste de tes films + bouton 'Copier le lien')")
+    print("  Ctrl+C pour arreter")
+    print("==========================================\n")
 
     try:
         server.serve_forever()

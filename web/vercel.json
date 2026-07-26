@@ -5,6 +5,7 @@
   "framework": "nextjs",
   "crons": [
     { "path": "/api/cron/maintenance?action=on", "schedule": "0 3 * * 0" },
+    { "path": "/api/cron/update-catalog", "schedule": "0 4 * * 0" },
     { "path": "/api/cron/maintenance?action=off", "schedule": "0 5 * * 0" }
   ]
 }

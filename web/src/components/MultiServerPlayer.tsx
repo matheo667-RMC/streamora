@@ -11,17 +11,21 @@ interface Server {
   build: (tmdbId: number, season?: number, episode?: number) => string;
 }
 
-// Two sources max, keyed by TMDB id so links resolve dynamically. The primary
-// one plays on click; the second is a silent fallback surfaced only via a
-// discreet "autre lecteur" link so the UI stays clean (Papi-Streaming style).
+// Sources keyed by TMDB id so links resolve dynamically and never rot. The
+// primary plays on click; the others are fallbacks surfaced via a discreet
+// "changer de lecteur" control so the UI stays clean (Netflix-like).
 const MOVIE_SERVERS: Server[] = [
-  { id: "vidlink", label: "Lecteur principal", fr: false, build: (id) => `https://vidlink.pro/movie/${id}` },
-  { id: "vidsrc", label: "Lecteur 2", fr: false, build: (id) => `https://vidsrc.to/embed/movie/${id}` },
+  { id: "vidlink", label: "Lecteur 1", fr: true, build: (id) => `https://vidlink.pro/movie/${id}` },
+  { id: "vidsrccc", label: "Lecteur 2", fr: false, build: (id) => `https://vidsrc.cc/v2/embed/movie/${id}` },
+  { id: "2embed", label: "Lecteur 3", fr: false, build: (id) => `https://www.2embed.cc/embed/${id}` },
+  { id: "vidsrcxyz", label: "Lecteur 4", fr: false, build: (id) => `https://vidsrc.xyz/embed/movie?tmdb=${id}` },
 ];
 
 const TV_SERVERS: Server[] = [
-  { id: "vidlink", label: "Lecteur principal", fr: false, build: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
-  { id: "vidsrc", label: "Lecteur 2", fr: false, build: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}` },
+  { id: "vidlink", label: "Lecteur 1", fr: true, build: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}` },
+  { id: "vidsrccc", label: "Lecteur 2", fr: false, build: (id, s, e) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}` },
+  { id: "2embed", label: "Lecteur 3", fr: false, build: (id, s, e) => `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` },
+  { id: "vidsrcxyz", label: "Lecteur 4", fr: false, build: (id, s, e) => `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}` },
 ];
 
 interface Props {
@@ -36,8 +40,14 @@ export function MultiServerPlayer({ tmdbId, type, season, episode, title }: Prop
   const servers = type === "movie" ? MOVIE_SERVERS : TV_SERVERS;
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [active, setActive] = useState(0);
 
-  const src = servers[0].build(tmdbId, season, episode);
+  // Reset to the primary source when the episode/movie changes.
+  useEffect(() => {
+    setActive(0);
+  }, [tmdbId, season, episode]);
+
+  const src = servers[active].build(tmdbId, season, episode);
 
   const toggleFullscreen = () => {
     const el = containerRef.current;
@@ -85,6 +95,24 @@ export function MultiServerPlayer({ tmdbId, type, season, episode, title }: Prop
         </button>
       </div>
 
+      {/* Discreet source switcher — if a player doesn't load, pick another. */}
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+        <span className="text-gray-500">La vidéo ne se lance pas ?</span>
+        {servers.map((s, i) => (
+          <button
+            key={s.id}
+            onClick={() => setActive(i)}
+            className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+              i === active
+                ? "bg-purple-600 text-white"
+                : "bg-white/5 text-gray-300 hover:bg-white/10"
+            }`}
+          >
+            {s.label}
+            {s.fr ? " · VF" : ""}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
