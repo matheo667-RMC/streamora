@@ -26,10 +26,14 @@ const SECTIONS = [
 export function AccountExtras() {
   const [sub, setSub] = useState<Sub | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [posters, setPosters] = useState<{ title: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   useEffect(() => {
     fetch("/api/subscription").then((r) => r.json()).then(setSub).catch(() => {});
     fetch("/api/library").then((r) => r.json()).then((d) => setItems(d.items || [])).catch(() => {});
+    fetch("/api/avatars").then((r) => r.json()).then((d) => setPosters(d.posters || [])).catch(() => {});
   }, []);
 
   const byStatus = (s: string) => items.filter((i) => i.status === s);
@@ -41,6 +45,33 @@ export function AccountExtras() {
       body: JSON.stringify({ avatar: a }),
     });
     if (res.ok) setSub((prev) => (prev ? { ...prev, image: a } : prev));
+  }
+
+  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Choisis une image (jpg, png…).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("Image trop lourde (max 5 Mo).");
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok && data.url) await setAvatar(data.url);
+      else setUploadError("Échec de l'envoi. Réessaie.");
+    } catch {
+      setUploadError("Échec de l'envoi. Réessaie.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   const currentAvatar = sub?.image || "";
@@ -74,6 +105,40 @@ export function AccountExtras() {
               {a}
             </button>
           ))}
+        </div>
+
+        {/* Film/série avatars */}
+        {posters.length > 0 && (
+          <div className="mt-5">
+            <p className="text-sm text-gray-400 mb-2">Avatars films & séries :</p>
+            <div className="flex flex-wrap gap-2">
+              {posters.map((p) => (
+                <button
+                  key={p.url}
+                  onClick={() => setAvatar(p.url)}
+                  title={p.title}
+                  className={`h-12 w-12 rounded-full overflow-hidden transition-all ring-2 ${
+                    currentAvatar === p.url ? "ring-purple-500 scale-110" : "ring-white/10 hover:ring-purple-400/60"
+                  }`}
+                >
+                  <Image src={p.url} alt={p.title} width={48} height={48} className="object-cover h-full w-full" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Photo perso */}
+        <div className="mt-5">
+          <p className="text-sm text-gray-400 mb-2">Ou mets ta photo :</p>
+          <label className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-medium cursor-pointer transition-colors">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V19a2 2 0 002 2h14a2 2 0 002-2v-2.5M7 9l5-5 5 5M12 4v12" />
+            </svg>
+            {uploading ? "Envoi…" : "Choisir une photo"}
+            <input type="file" accept="image/*" className="hidden" onChange={uploadPhoto} disabled={uploading} />
+          </label>
+          {uploadError && <p className="mt-2 text-xs text-red-400">{uploadError}</p>}
         </div>
       </div>
 
