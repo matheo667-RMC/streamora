@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { extractDriveFileId, getDriveEmbedUrl } from "@/lib/video-url";
 
 interface Props {
@@ -191,8 +191,6 @@ export function VideoPlayer({ videoUrl, title, poster }: Props) {
 function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
@@ -200,7 +198,6 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
   const [volume, setVolume] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [enhance, setEnhance] = useState(true);
-  const [audioEnhance, setAudioEnhance] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -221,72 +218,11 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
     setLoading(false);
   }, [videoUrl, driveFileId]);
 
-  const setupAudio = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || audioCtxRef.current || sourceRef.current) return;
-
-    try {
-      const ctx = new AudioContext();
-      const source = ctx.createMediaElementSource(video);
-
-      // Bass boost (low shelf filter)
-      const bass = ctx.createBiquadFilter();
-      bass.type = "lowshelf";
-      bass.frequency.value = 200;
-      bass.gain.value = audioEnhance ? 4 : 0;
-
-      // Voice clarity (peaking filter around 2-4kHz)
-      const clarity = ctx.createBiquadFilter();
-      clarity.type = "peaking";
-      clarity.frequency.value = 3000;
-      clarity.Q.value = 1;
-      clarity.gain.value = audioEnhance ? 3 : 0;
-
-      // Presence (high shelf for crispness)
-      const presence = ctx.createBiquadFilter();
-      presence.type = "highshelf";
-      presence.frequency.value = 8000;
-      presence.gain.value = audioEnhance ? 2 : 0;
-
-      // Compressor (normalize loud/quiet parts)
-      const compressor = ctx.createDynamicsCompressor();
-      compressor.threshold.value = -24;
-      compressor.knee.value = 12;
-      compressor.ratio.value = 4;
-      compressor.attack.value = 0.003;
-      compressor.release.value = 0.25;
-
-      source.connect(bass);
-      bass.connect(clarity);
-      clarity.connect(presence);
-      presence.connect(compressor);
-      compressor.connect(ctx.destination);
-
-      audioCtxRef.current = ctx;
-      sourceRef.current = source;
-    } catch {
-      // Fallback: no audio enhancement
-    }
-  }, [audioEnhance]);
-
-  useEffect(() => {
-    return () => {
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close();
-      }
-    };
-  }, []);
-
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (!audioCtxRef.current) setupAudio();
-
     if (video.paused) {
-      if (audioCtxRef.current?.state === "suspended") {
-        audioCtxRef.current.resume();
-      }
       video.play();
       setIsPlaying(true);
     } else {
@@ -496,13 +432,7 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
                     <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${enhance ? "translate-x-5" : "translate-x-0.5"}`} />
                   </div>
                 </label>
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm">Audio+</span>
-                  <div className={`w-10 h-5 rounded-full transition-colors relative ${audioEnhance ? "bg-purple-600" : "bg-gray-700"}`} onClick={() => setAudioEnhance(!audioEnhance)}>
-                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${audioEnhance ? "translate-x-5" : "translate-x-0.5"}`} />
-                  </div>
-                </label>
-                <p className="text-[10px] text-gray-600">Image: nettete, contraste, couleurs. Audio: basses, clarte voix.</p>
+                <p className="text-[10px] text-gray-600">Image: nettete, contraste, couleurs.</p>
               </div>
             )}
           </div>
