@@ -81,6 +81,7 @@ export default function AdminPage() {
   const [posterResults, setPosterResults] = useState<{ id: number; title: string; year: string; posterUrl: string; posterUrlHD: string; overview: string }[]>([]);
   const [posterSearching, setPosterSearching] = useState(false);
   const [posterTarget, setPosterTarget] = useState<"film" | "series">("film");
+  const [episodeInfoLoading, setEpisodeInfoLoading] = useState(false);
 
   async function searchPoster(title: string, type: "film" | "series") {
     if (!title.trim()) return;
@@ -101,6 +102,33 @@ export default function AdminPage() {
       setSeriesForm(f => ({ ...f, posterUrl: url, description: f.description || description || "" }));
     }
     setPosterResults([]);
+  }
+
+  async function fillFilmDuration(url: string, current: string) {
+    if (current.trim() || !url.trim()) return;
+    const d = await probeVideoDuration(url);
+    if (d) setFilmForm(f => (f.duration.trim() ? f : { ...f, duration: d }));
+  }
+
+  async function fillEpisodeDuration(url: string, current: string) {
+    if (current.trim() || !url.trim()) return;
+    const d = await probeVideoDuration(url);
+    if (d) setEpisodeForm(e => (e.duration.trim() ? e : { ...e, duration: d }));
+  }
+
+  async function fillEpisodeInfo() {
+    if (!managingSeries) return;
+    setEpisodeInfoLoading(true);
+    try {
+      const res = await fetch(`/api/admin/episode-info?q=${encodeURIComponent(managingSeries.title)}&season=${episodeForm.season}&number=${episodeForm.number}`);
+      const data = await res.json();
+      setEpisodeForm(e => ({
+        ...e,
+        title: data.title || e.title,
+        duration: e.duration.trim() ? e.duration : (data.duration || e.duration),
+      }));
+    } catch { /* ignore */ }
+    setEpisodeInfoLoading(false);
   }
 
   // Maintenance
@@ -638,7 +666,7 @@ export default function AdminPage() {
               <Field label="Annee" value={String(filmForm.year)} onChange={v => setFilmForm({ ...filmForm, year: Number(v) || new Date().getFullYear() })} />
             </div>
             <Field label="Duree (ex: 1h30)" value={filmForm.duration} onChange={v => setFilmForm({ ...filmForm, duration: v })} />
-            <Field label="URL Video (lien direct ou Google Drive)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} placeholder="https://..." />
+            <Field label="URL Video (lien direct ou Google Drive)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} placeholder="https://..." onBlur={() => fillFilmDuration(filmForm.videoUrl, filmForm.duration)} />
             <div className="space-y-1">
               <label className="text-xs text-gray-400">Affiche du film</label>
               <div className="flex gap-2">
@@ -762,8 +790,16 @@ export default function AdminPage() {
                 <Field label="Episode n°" value={String(episodeForm.number)} onChange={v => setEpisodeForm({ ...episodeForm, number: Number(v) || 1 })} />
                 <Field label="Duree (ex: 45min)" value={episodeForm.duration} onChange={v => setEpisodeForm({ ...episodeForm, duration: v })} />
               </div>
-              <Field label="Titre de l'episode" value={episodeForm.title} onChange={v => setEpisodeForm({ ...episodeForm, title: v })} placeholder="Ex: L'arrivee de Luffy" />
-              <Field label="URL Video (Google Drive ou lien direct)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} placeholder="https://drive.google.com/file/d/.../view" />
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400">Titre de l&apos;episode</label>
+                <div className="flex gap-2">
+                  <input type="text" value={episodeForm.title} onChange={e => setEpisodeForm({ ...episodeForm, title: e.target.value })} placeholder="Ex: L'arrivee de Luffy" className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors" />
+                  <button type="button" onClick={fillEpisodeInfo} disabled={episodeInfoLoading} className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 whitespace-nowrap transition-colors">
+                    {episodeInfoLoading ? "..." : "Titre TMDB"}
+                  </button>
+                </div>
+              </div>
+              <Field label="URL Video (Google Drive ou lien direct)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} placeholder="https://drive.google.com/file/d/.../view" onBlur={() => fillEpisodeDuration(episodeForm.videoUrl, episodeForm.duration)} />
               <button onClick={addEpisode} disabled={saving || !episodeForm.videoUrl.trim()} className="w-full btn-primary py-2.5 mt-3">
                 {saving ? "Ajout en cours..." : "Ajouter l'episode"}
               </button>
@@ -789,7 +825,7 @@ function Modal({ title, onClose, children, wide }: { title: string; onClose: () 
   );
 }
 
-function Field({ label, value, onChange, placeholder, textarea }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; textarea?: boolean }) {
+function Field({ label, value, onChange, placeholder, textarea, onBlur }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; textarea?: boolean; onBlur?: () => void }) {
   const cls = "w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors";
   return (
     <div className="space-y-1">
@@ -797,8 +833,29 @@ function Field({ label, value, onChange, placeholder, textarea }: { label: strin
       {textarea ? (
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3} className={cls} />
       ) : (
-        <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cls} />
+        <input type="text" value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur} placeholder={placeholder} className={cls} />
       )}
     </div>
   );
+}
+
+// Reads the real duration of a video file from its URL (client-side).
+function probeVideoDuration(url: string): Promise<string> {
+  return new Promise(resolve => {
+    if (!/^https?:\/\//i.test(url.trim())) { resolve(""); return; }
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    let settled = false;
+    const done = (d: string) => { if (settled) return; settled = true; v.removeAttribute("src"); v.load(); resolve(d); };
+    v.onloadedmetadata = () => {
+      const s = v.duration;
+      if (!s || !isFinite(s)) { done(""); return; }
+      const h = Math.floor(s / 3600);
+      const m = Math.round((s % 3600) / 60);
+      done(h > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${m}min`);
+    };
+    v.onerror = () => done("");
+    setTimeout(() => done(""), 15000);
+    v.src = url.trim();
+  });
 }
