@@ -475,64 +475,21 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-400 mt-1">Transforme ton film en lien pour l&apos;ajouter au site</p>
               </div>
 
-              {/* Google Drive converter - PRIMARY method */}
+              {/* Paste any direct URL - PRIMARY method */}
               <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-6">
                 <div className="flex items-center gap-2 mb-1">
-                  <svg className="h-5 w-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7.71 3.5L1.15 15l4.58 7.5h13.54L12 3.5H7.71zm5.77 0l7.44 12.88-3.56 6.12H22l-4.48-7.5L12.48 3.5h1z" /></svg>
-                  <h3 className="font-bold text-base">Convertir un film via Google Drive</h3>
+                  <svg className="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" /></svg>
+                  <h3 className="font-bold text-base">Coller n&apos;importe quel lien video</h3>
                   <span className="rounded-full bg-purple-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Recommande</span>
                 </div>
-                <p className="text-xs text-gray-400 mb-4">La methode la plus fiable pour les gros films (permanent, gratuit, illimite)</p>
+                <p className="text-xs text-gray-400 mb-4">Ton serveur perso, un lien direct (.mp4), un embed, Google Drive... colle simplement l&apos;adresse ci-dessous.</p>
 
-                <ol className="space-y-2 mb-4 text-sm text-gray-300">
-                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">1</span> Va sur <a href="https://drive.google.com" target="_blank" rel="noopener noreferrer" className="text-purple-400 underline">drive.google.com</a> et upload ton film</li>
-                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">2</span> Clic droit sur le film &rarr; <b>Partager</b> &rarr; mets <b>&laquo; Tous les utilisateurs disposant du lien &raquo;</b></li>
-                  <li className="flex gap-2.5"><span className="shrink-0 h-5 w-5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold flex items-center justify-center">3</span> Copie le lien et colle-le ci-dessous</li>
-                </ol>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={driveUrl}
-                    onChange={e => setDriveUrl(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/.../view"
-                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
-                    onKeyDown={e => { if (e.key === "Enter" && driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
-                  />
-                  <button
-                    onClick={() => { if (driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
-                    disabled={!driveUrl.trim()}
-                    className="shrink-0 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 transition-colors"
-                  >
-                    Convertir
-                  </button>
-                </div>
-              </div>
-
-              {uploadError && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{uploadError}</div>
-              )}
-
-              {/* OR separator */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-xs text-gray-500 font-medium">OU</span>
-                <div className="flex-1 h-px bg-white/10" />
-              </div>
-
-              {/* Paste any URL */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-                <h3 className="font-bold text-sm text-gray-300 mb-3 flex items-center gap-2">
-                  <svg className="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" /></svg>
-                  Coller une URL directe
-                </h3>
-                <p className="text-xs text-gray-500 mb-3">Si tu as deja un lien video (embed, direct, etc.), colle-le directement</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     id="directUrlInput"
-                    placeholder="https://..."
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+                    placeholder="https://... (colle ton lien video ici)"
+                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
                     onKeyDown={e => {
                       if (e.key === "Enter") {
                         const val = (e.target as HTMLInputElement).value.trim();
@@ -549,6 +506,43 @@ export default function AdminPage() {
                     className="shrink-0 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-500 transition-colors"
                   >
                     Ajouter
+                  </button>
+                </div>
+              </div>
+
+              {uploadError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{uploadError}</div>
+              )}
+
+              {/* OR separator */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-xs text-gray-500 font-medium">OU via Google Drive</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+
+              {/* Google Drive converter - optional */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+                <h3 className="font-bold text-sm text-gray-300 mb-1 flex items-center gap-2">
+                  <svg className="h-4 w-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7.71 3.5L1.15 15l4.58 7.5h13.54L12 3.5H7.71zm5.77 0l7.44 12.88-3.56 6.12H22l-4.48-7.5L12.48 3.5h1z" /></svg>
+                  Convertir un lien Google Drive
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">Colle un lien de partage Drive (&laquo; Tous les utilisateurs disposant du lien &raquo;) pour le transformer en lien de streaming.</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={driveUrl}
+                    onChange={e => setDriveUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/.../view"
+                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+                    onKeyDown={e => { if (e.key === "Enter" && driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
+                  />
+                  <button
+                    onClick={() => { if (driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
+                    disabled={!driveUrl.trim()}
+                    className="shrink-0 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50 transition-colors"
+                  >
+                    Convertir
                   </button>
                 </div>
               </div>
@@ -595,15 +589,15 @@ export default function AdminPage() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold text-sm">1</div>
-                    <p className="text-xs text-gray-400">Upload ton film sur Google Drive et copie le lien de partage</p>
+                    <p className="text-xs text-gray-400">Recupere le lien video (ton serveur, un lien direct .mp4, Google Drive...)</p>
                   </div>
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold text-sm">2</div>
-                    <p className="text-xs text-gray-400">Colle le lien ici pour obtenir une URL de streaming</p>
+                    <p className="text-xs text-gray-400">Colle-le ci-dessus (ou convertis un lien Drive) et copie l&apos;URL generee</p>
                   </div>
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold text-sm">3</div>
-                    <p className="text-xs text-gray-400">Copie l&apos;URL et colle-la dans le champ Video d&apos;un film/serie</p>
+                    <p className="text-xs text-gray-400">Colle-la dans le champ Video d&apos;un film/serie, ajoute titre + affiche</p>
                   </div>
                 </div>
               </div>
