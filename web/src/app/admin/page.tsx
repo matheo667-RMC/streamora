@@ -666,7 +666,7 @@ export default function AdminPage() {
               <Field label="Annee" value={String(filmForm.year)} onChange={v => setFilmForm({ ...filmForm, year: Number(v) || new Date().getFullYear() })} />
             </div>
             <Field label="Duree (ex: 1h30)" value={filmForm.duration} onChange={v => setFilmForm({ ...filmForm, duration: v })} />
-            <Field label="URL Video (lien direct ou Google Drive)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} placeholder="https://..." onBlur={() => fillFilmDuration(filmForm.videoUrl, filmForm.duration)} />
+            <Field label="URL Video (colle n'importe quel lien : ton serveur, .mp4, embed, Google Drive...)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} placeholder="https://... (n'importe quel lien video)" onBlur={() => fillFilmDuration(filmForm.videoUrl, filmForm.duration)} />
             <div className="space-y-1">
               <label className="text-xs text-gray-400">Affiche du film</label>
               <div className="flex gap-2">
@@ -749,7 +749,7 @@ export default function AdminPage() {
           <div className="space-y-4">
             {/* Help text */}
             <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
-              <p className="text-sm text-emerald-300">Pour ajouter un episode, remplis le formulaire ci-dessous avec le lien video (Google Drive ou lien direct). L&apos;episode sera automatiquement ajoute a la serie.</p>
+              <p className="text-sm text-emerald-300">Pour ajouter un episode, remplis le formulaire ci-dessous avec n&apos;importe quel lien video (ton serveur, un lien direct .mp4, un embed, Google Drive...). L&apos;episode sera automatiquement ajoute a la serie.</p>
             </div>
 
             {/* Existing episodes grouped by season */}
@@ -799,7 +799,7 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
-              <Field label="URL Video (Google Drive ou lien direct)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} placeholder="https://drive.google.com/file/d/.../view" onBlur={() => fillEpisodeDuration(episodeForm.videoUrl, episodeForm.duration)} />
+              <Field label="URL Video (colle n'importe quel lien : ton serveur, .mp4, embed, Google Drive...)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} placeholder="https://... (n'importe quel lien video)" onBlur={() => fillEpisodeDuration(episodeForm.videoUrl, episodeForm.duration)} />
               <button onClick={addEpisode} disabled={saving || !episodeForm.videoUrl.trim()} className="w-full btn-primary py-2.5 mt-3">
                 {saving ? "Ajout en cours..." : "Ajouter l'episode"}
               </button>
