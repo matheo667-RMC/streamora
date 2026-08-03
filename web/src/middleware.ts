@@ -15,7 +15,11 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/forgot-password") ||
     pathname === "/maintenance" ||
     pathname === "/favicon.ico" ||
+    pathname === "/manifest.json" ||
+    pathname === "/sw.js" ||
     pathname.startsWith("/logo") ||
+    pathname.startsWith("/icon-") ||
+    pathname === "/apple-touch-icon.png" ||
     pathname.startsWith("/uploads/")
   ) {
     return NextResponse.next();
