@@ -11,7 +11,7 @@ export function Footer() {
           <div className="max-w-xs">
             <Link href="/" className="flex items-center gap-2 mb-3">
               <Image src="/logo.png" alt="Streamora" width={28} height={28} className="rounded-lg" />
-              <span className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="text-lg font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
                 Streamora
               </span>
             </Link>
@@ -53,9 +53,9 @@ export function Footer() {
           <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} Streamora. Tous droits réservés.</p>
           <div className="flex items-center gap-1 text-xs text-gray-600">
             <span>Créé avec</span>
-            <span className="text-pink-500">&#9829;</span>
+            <span className="text-green-500">&#9829;</span>
             <span>par</span>
-            <span className="font-semibold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Max</span>
+            <span className="font-semibold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Max</span>
           </div>
         </div>
       </div>

@@ -91,17 +91,17 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4">
       {/* Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-950 to-purple-950/30" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent" />
+      <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-950 to-emerald-950/30" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/10 via-transparent to-transparent" />
       
-      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-black/70 backdrop-blur-2xl p-8 md:p-10 shadow-2xl shadow-purple-900/10">
+      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-black/70 backdrop-blur-2xl p-8 md:p-10 shadow-2xl shadow-emerald-900/10">
         <div className="mb-8 text-center">
           <Image
             src="/logo.png"
             alt="Streamora"
             width={64}
             height={64}
-            className="mx-auto rounded-xl shadow-lg shadow-purple-900/20"
+            className="mx-auto rounded-xl shadow-lg shadow-emerald-900/20"
           />
           <h1 className="mt-4 text-2xl sm:text-3xl font-bold">
             {step === "2fa" ? "Vérification 2FA" : "Bon retour !"}
@@ -148,7 +148,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
               />
 
               <input
@@ -157,13 +157,13 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
               />
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3.5 font-semibold text-white hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 transition-all"
+                className="w-full rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-3.5 font-semibold text-white hover:from-emerald-500 hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
               >
                 {loading ? "Connexion..." : "Se connecter"}
               </button>
@@ -177,7 +177,7 @@ export default function LoginPage() {
 
             <p className="mt-4 text-center text-sm text-gray-400">
               Pas encore de compte ?{" "}
-              <Link href="/register" className="text-purple-400 hover:text-purple-300 font-medium">
+              <Link href="/register" className="text-emerald-400 hover:text-emerald-300 font-medium">
                 Creer un compte
               </Link>
             </p>
@@ -192,9 +192,9 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-4 text-center">
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
               <div className="text-4xl mb-2">
-                <svg className="h-12 w-12 mx-auto text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="h-12 w-12 mx-auto text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -211,13 +211,13 @@ export default function LoginPage() {
               required
               maxLength={6}
               autoFocus
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-white text-center text-2xl tracking-[0.5em] font-mono placeholder-gray-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-4 text-white text-center text-2xl tracking-[0.5em] font-mono placeholder-gray-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
             />
 
             <button
               type="submit"
               disabled={loading || totpCode.length !== 6}
-              className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3.5 font-semibold text-white hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 transition-all"
+              className="w-full rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-3.5 font-semibold text-white hover:from-emerald-500 hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
             >
               {loading ? "Verification..." : "Verifier"}
             </button>

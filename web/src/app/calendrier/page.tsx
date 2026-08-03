@@ -45,10 +45,10 @@ export default async function CalendarPage() {
       <Navbar />
       <div className="min-h-screen bg-[#0f0f23]">
         <div className="relative pt-24 pb-6 px-4 sm:px-6">
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 to-transparent h-48" />
+          <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 to-transparent h-48" />
           <div className="relative mx-auto max-w-[1200px]">
             <h1 className="text-2xl sm:text-3xl font-bold">
-              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Calendrier des sorties</span>
+              <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Calendrier des sorties</span>
             </h1>
             <p className="mt-2 text-sm text-gray-400">Les prochains films au cinéma, avec compte à rebours.</p>
           </div>
@@ -73,10 +73,10 @@ export default async function CalendarPage() {
                     <div className="flex-1 min-w-0">
                       <h2 className="font-bold text-lg">{m.title}</h2>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                        <span className="rounded bg-purple-600 px-2 py-0.5 font-semibold">
+                        <span className="rounded bg-emerald-600 px-2 py-0.5 font-semibold">
                           {new Date(m.release_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
                         </span>
-                        <span className="rounded bg-pink-600 px-2 py-0.5 font-semibold">
+                        <span className="rounded bg-green-600 px-2 py-0.5 font-semibold">
                           {d === 0 ? "Aujourd'hui" : `Dans ${d} jour${d > 1 ? "s" : ""}`}
                         </span>
                       </div>

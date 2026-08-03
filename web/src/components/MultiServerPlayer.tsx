@@ -104,7 +104,7 @@ export function MultiServerPlayer({ tmdbId, type, season, episode, title }: Prop
             onClick={() => setActive(i)}
             className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
               i === active
-                ? "bg-purple-600 text-white"
+                ? "bg-emerald-600 text-white"
                 : "bg-white/5 text-gray-300 hover:bg-white/10"
             }`}
           >

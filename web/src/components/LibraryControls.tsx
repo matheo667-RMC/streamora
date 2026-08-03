@@ -88,7 +88,7 @@ export function LibraryControls({ mediaType, mediaId }: Props) {
 
   if (!authed) {
     return (
-      <a href="/login" className="text-sm text-purple-400 hover:text-purple-300">
+      <a href="/login" className="text-sm text-emerald-400 hover:text-emerald-300">
         Connecte-toi pour ajouter à ta liste et noter
       </a>
     );
@@ -103,7 +103,7 @@ export function LibraryControls({ mediaType, mediaId }: Props) {
             onClick={() => toggle(l.status)}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
               active[l.status]
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white"
                 : "bg-white/10 text-gray-300 hover:bg-white/20"
             }`}
           >
@@ -146,7 +146,7 @@ export function LibraryControls({ mediaType, mediaId }: Props) {
             onChange={(e) => setReview(e.target.value)}
             placeholder="Laisse un avis (optionnel)…"
             rows={2}
-            className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none"
+            className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
           />
           <button onClick={saveReview} className="mt-2 rounded-lg bg-white/10 px-4 py-1.5 text-xs font-semibold hover:bg-white/20">
             Publier l&apos;avis

@@ -54,7 +54,7 @@ export function NotificationsBell() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         {unseen > 0 && (
-          <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-pink-600 text-[9px] font-bold flex items-center justify-center">{unseen > 9 ? "9+" : unseen}</span>
+          <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-green-600 text-[9px] font-bold flex items-center justify-center">{unseen > 9 ? "9+" : unseen}</span>
         )}
       </button>
 
@@ -70,7 +70,7 @@ export function NotificationsBell() {
                   {n.posterUrl && <Image src={n.posterUrl} alt="" fill className="object-cover" sizes="40px" />}
                 </div>
                 <div className="min-w-0">
-                  <div className={`text-[10px] font-bold uppercase ${n.type === "reminder" ? "text-yellow-400" : "text-purple-400"}`}>{n.title}</div>
+                  <div className={`text-[10px] font-bold uppercase ${n.type === "reminder" ? "text-yellow-400" : "text-emerald-400"}`}>{n.title}</div>
                   <div className="text-sm text-gray-200 line-clamp-2">{n.message}</div>
                 </div>
               </Link>

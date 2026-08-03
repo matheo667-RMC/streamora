@@ -84,22 +84,22 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
     <div className="mt-6 space-y-6">
       {/* Resume dialog */}
       {resumeItem && !resumeDismissed && !playingEp && (
-        <div className="rounded-xl border border-purple-500/30 bg-purple-600/10 p-4 animate-fade-in">
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-600/10 p-4 animate-fade-in">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 rounded-full bg-purple-600/20 p-2">
-              <svg className="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="shrink-0 rounded-full bg-emerald-600/20 p-2">
+              <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-white">
                 Reprendre {resumeItem.title}
-                {resumeItem.season && <span className="text-purple-400"> (S{resumeItem.season} E{resumeItem.episodeNumber})</span>}
+                {resumeItem.season && <span className="text-emerald-400"> (S{resumeItem.season} E{resumeItem.episodeNumber})</span>}
               </p>
               <p className="text-xs text-gray-400">Voulez-vous reprendre là où vous en étiez ?</p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={handleResume} className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 transition-colors">
+              <button onClick={handleResume} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 transition-colors">
                 Oui
               </button>
               <button onClick={() => setResumeDismissed(true)} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-white/20 transition-colors">
@@ -130,7 +130,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
           )}
           <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
             <p className="text-sm font-medium">
-              <span className="text-purple-400">S{String(playingEp.season).padStart(2, "0")}E{String(playingEp.number).padStart(2, "0")}</span>
+              <span className="text-emerald-400">S{String(playingEp.season).padStart(2, "0")}E{String(playingEp.number).padStart(2, "0")}</span>
               <span className="mx-2 text-gray-600">—</span>
               <span className="text-white">{playingEp.title || `Episode ${playingEp.number}`}</span>
             </p>
@@ -139,7 +139,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
               {nextEp ? (
                 <button
                   onClick={() => { setActiveSeason(nextEp.season); handlePlayEp(nextEp); }}
-                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 transition-colors"
+                  className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
                 >
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 5v14l8-7zM13 5v14l8-7z" /></svg>
                   Épisode suivant
@@ -175,13 +175,13 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
                     onClick={() => { setActiveSeason(s); setDropdownOpen(false); }}
                     className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                       activeSeason === s
-                        ? "bg-purple-600/20 text-purple-300 font-medium"
+                        ? "bg-emerald-600/20 text-emerald-300 font-medium"
                         : "text-gray-300 hover:bg-white/5 hover:text-white"
                     }`}
                   >
                     Saison {s}
                     {activeSeason === s && (
-                      <span className="ml-2 text-purple-400">●</span>
+                      <span className="ml-2 text-emerald-400">●</span>
                     )}
                   </button>
                 ))}
@@ -199,7 +199,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
           <div key={ep.id}
             className={`flex items-center gap-4 sm:gap-5 p-4 sm:p-5 cursor-pointer transition-all ${
               playingEp?.id === ep.id
-                ? "bg-purple-500/10"
+                ? "bg-emerald-500/10"
                 : idx % 2 === 0
                   ? "bg-[#16213e]/60 hover:bg-[#1a1a40]"
                   : "bg-[#16213e]/30 hover:bg-[#1a1a40]"
@@ -208,21 +208,21 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
 
             {/* Episode number */}
             <div className="flex-shrink-0 w-8 text-center">
-              <span className={`text-lg sm:text-xl font-semibold ${playingEp?.id === ep.id ? "text-purple-400" : "text-gray-600"}`}>
+              <span className={`text-lg sm:text-xl font-semibold ${playingEp?.id === ep.id ? "text-emerald-400" : "text-gray-600"}`}>
                 {idx + 1}
               </span>
             </div>
 
             {/* Play icon / equalizer */}
             <div className={`flex-shrink-0 flex h-14 w-14 sm:h-16 sm:w-20 items-center justify-center rounded-md transition-colors ${
-              playingEp?.id === ep.id ? "bg-purple-600/30" : "bg-white/5"
+              playingEp?.id === ep.id ? "bg-emerald-600/30" : "bg-white/5"
             }`}>
               {playingEp?.id === ep.id ? (
                 <div className="flex gap-0.5 items-end h-5">
-                  <div className="w-1 h-full bg-purple-400 rounded-full animate-pulse" />
-                  <div className="w-1 h-3 bg-purple-400 rounded-full animate-pulse [animation-delay:150ms]" />
-                  <div className="w-1 h-4 bg-purple-400 rounded-full animate-pulse [animation-delay:300ms]" />
-                  <div className="w-1 h-2 bg-purple-400 rounded-full animate-pulse [animation-delay:450ms]" />
+                  <div className="w-1 h-full bg-emerald-400 rounded-full animate-pulse" />
+                  <div className="w-1 h-3 bg-emerald-400 rounded-full animate-pulse [animation-delay:150ms]" />
+                  <div className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse [animation-delay:300ms]" />
+                  <div className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse [animation-delay:450ms]" />
                 </div>
               ) : (
                 <svg className="h-6 w-6 text-white/70 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
@@ -251,9 +251,9 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
             {(ep.videoUrl || seriesTmdbId) ? (
               <div className="flex-shrink-0">
                 {playingEp?.id === ep.id ? (
-                  <span className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-medium text-white">En lecture</span>
+                  <span className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">En lecture</span>
                 ) : (
-                  <span className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-purple-500/20 hover:text-purple-300 hover:border-purple-500/30 transition-colors">
+                  <span className="rounded-full bg-white/5 border border-white/10 px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-500/30 transition-colors">
                     Regarder
                   </span>
                 )}

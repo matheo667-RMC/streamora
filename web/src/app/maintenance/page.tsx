@@ -32,17 +32,17 @@ function ClassicMode({ msg }: { msg: string }) {
       <div className="max-w-lg">
         <Image src="/logo.png" alt="Streamora" width={80} height={80} className="mx-auto rounded-xl mb-8" />
         <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
             Maintenance
           </span>
         </h1>
-        <div className="w-16 h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-6" />
+        <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full mx-auto mb-6" />
         <p className="text-lg text-gray-300 mb-2">{msg}</p>
         <p className="text-sm text-gray-500">Nous revenons très bientôt !</p>
         <div className="mt-10 flex justify-center gap-3">
-          <div className="h-3 w-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "0s" }} />
-          <div className="h-3 w-3 rounded-full bg-pink-500 animate-bounce" style={{ animationDelay: "0.15s" }} />
-          <div className="h-3 w-3 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "0.3s" }} />
+          <div className="h-3 w-3 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "0s" }} />
+          <div className="h-3 w-3 rounded-full bg-green-500 animate-bounce" style={{ animationDelay: "0.15s" }} />
+          <div className="h-3 w-3 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "0.3s" }} />
         </div>
         <p className="mt-8 text-xs text-gray-700">&copy; {new Date().getFullYear()} Streamora</p>
       </div>
@@ -97,25 +97,25 @@ function NeonMode({ msg }: { msg: string }) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-950 px-4 text-center relative overflow-hidden">
       {/* Neon glow background effects */}
       <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-green-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "2s" }} />
       </div>
 
       <div className="max-w-lg z-10">
-        <Image src="/logo.png" alt="Streamora" width={70} height={70} className="mx-auto rounded-xl mb-8 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+        <Image src="/logo.png" alt="Streamora" width={70} height={70} className="mx-auto rounded-xl mb-8 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
 
-        <h1 className="text-5xl md:text-6xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 drop-shadow-[0_0_30px_rgba(168,85,247,0.3)]">
+        <h1 className="text-5xl md:text-6xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-green-400 drop-shadow-[0_0_30px_rgba(16,185,129,0.3)]">
           MAINTENANCE
         </h1>
 
-        <div className="my-6 h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+        <div className="my-6 h-px bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
 
         <p className="text-lg text-gray-200 mb-2 font-light">{msg}</p>
 
-        <div className="mt-10 inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-purple-500/50 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.2)]">
-          <div className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-          <span className="text-sm text-purple-300">Mise à jour en cours</span>
+        <div className="mt-10 inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-emerald-500/50 bg-emerald-500/5 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span className="text-sm text-emerald-300">Mise à jour en cours</span>
         </div>
 
         <p className="mt-10 text-xs text-gray-700">&copy; {new Date().getFullYear()} Streamora</p>
@@ -186,7 +186,7 @@ function CountdownMode({ msg }: { msg: string }) {
 
         {/* Progress bar animation */}
         <div className="w-full max-w-xs mx-auto h-1.5 bg-gray-800 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-[progress_3s_ease-in-out_infinite]" style={{
+          <div className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full animate-[progress_3s_ease-in-out_infinite]" style={{
             animation: "progress 3s ease-in-out infinite",
           }} />
         </div>

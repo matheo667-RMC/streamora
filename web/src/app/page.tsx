@@ -61,10 +61,10 @@ export default async function HomePage() {
                   <Image src={featured.posterUrl} alt={featured.title} fill className="object-cover" sizes="160px" />
                 </div>
                 <div className="max-w-xl">
-                  <span className="inline-block rounded bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">À la une</span>
+                  <span className="inline-block rounded bg-gradient-to-r from-emerald-600 to-green-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">À la une</span>
                   <h1 className="mt-2 text-3xl sm:text-4xl font-extrabold drop-shadow-lg">{featured.title}</h1>
                   {featured.description && <p className="mt-3 text-sm text-gray-300 line-clamp-3">{featured.description}</p>}
-                  <Link href={`/films/${featured.id}`} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-2.5 text-sm font-bold hover:opacity-90">
+                  <Link href={`/films/${featured.id}`} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-2.5 text-sm font-bold hover:opacity-90">
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                     Regarder
                   </Link>

@@ -228,7 +228,7 @@ export function AdminDashboard({
           <StatCard label="Films" value={stats.totalFilms} color="text-primary-400" />
           <StatCard label="Séries" value={stats.totalSeries} color="text-yellow-400" />
           <StatCard label="Utilisateurs" value={stats.totalUsers} color="text-green-400" />
-          <StatCard label="Téléchargements" value={stats.totalDownloads} color="text-purple-400" />
+          <StatCard label="Téléchargements" value={stats.totalDownloads} color="text-emerald-400" />
         </div>
       )}
 

@@ -49,8 +49,8 @@ export default async function SeriesDetailPage({ params }: Props) {
                     </div>
                   )}
                   <div className="absolute top-1.5 left-1.5 flex flex-col items-center">
-                    <span className="rounded-t bg-purple-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
-                    <span className="rounded-b bg-purple-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{series.episodes.length}</span>
+                    <span className="rounded-t bg-emerald-600 px-1.5 py-0.5 text-[8px] font-bold leading-none uppercase">Eps</span>
+                    <span className="rounded-b bg-emerald-800 px-1.5 py-0.5 text-[11px] font-bold leading-none">{series.episodes.length}</span>
                   </div>
                 </div>
               </div>
@@ -66,7 +66,7 @@ export default async function SeriesDetailPage({ params }: Props) {
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex gap-2">
                     <span className="text-gray-500 shrink-0 w-24">Genre :</span>
-                    <span className="text-purple-400 font-medium">{series.category}</span>
+                    <span className="text-emerald-400 font-medium">{series.category}</span>
                   </div>
                   <div className="flex gap-2">
                     <span className="text-gray-500 shrink-0 w-24">Année :</span>

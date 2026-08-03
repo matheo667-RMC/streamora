@@ -82,7 +82,7 @@ export function AccountExtras() {
       <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Mon avatar</h2>
         <div className="flex items-center gap-4 mb-4">
-          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-3xl overflow-hidden ring-2 ring-purple-500/30">
+          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-3xl overflow-hidden ring-2 ring-emerald-500/30">
             {currentAvatar.startsWith("http") ? (
               <Image src={currentAvatar} alt="avatar" width={64} height={64} className="object-cover h-full w-full" />
             ) : currentAvatar ? (
@@ -99,7 +99,7 @@ export function AccountExtras() {
               key={a}
               onClick={() => setAvatar(a)}
               className={`h-11 w-11 rounded-full text-xl flex items-center justify-center transition-all ${
-                currentAvatar === a ? "bg-gradient-to-br from-purple-600 to-pink-600 scale-110" : "bg-white/10 hover:bg-white/20"
+                currentAvatar === a ? "bg-gradient-to-br from-emerald-600 to-green-600 scale-110" : "bg-white/10 hover:bg-white/20"
               }`}
             >
               {a}
@@ -118,7 +118,7 @@ export function AccountExtras() {
                   onClick={() => setAvatar(p.url)}
                   title={p.title}
                   className={`h-12 w-12 rounded-full overflow-hidden transition-all ring-2 ${
-                    currentAvatar === p.url ? "ring-purple-500 scale-110" : "ring-white/10 hover:ring-purple-400/60"
+                    currentAvatar === p.url ? "ring-emerald-500 scale-110" : "ring-white/10 hover:ring-emerald-400/60"
                   }`}
                 >
                   <Image src={p.url} alt={p.title} width={48} height={48} className="object-cover h-full w-full" />
@@ -160,7 +160,7 @@ export function AccountExtras() {
             <div className="text-xs text-gray-400 mb-2">Badges</div>
             <div className="flex flex-wrap gap-2">
               {sub.badges.map((b) => (
-                <span key={b} className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 text-xs font-semibold">{b}</span>
+                <span key={b} className="rounded-full bg-gradient-to-r from-emerald-600 to-green-600 px-3 py-1 text-xs font-semibold">{b}</span>
               ))}
             </div>
           </div>
@@ -179,7 +179,7 @@ export function AccountExtras() {
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {list.map((it) => (
                   <Link key={it.id} href={`/${it.mediaType === "film" ? "films" : "series"}/${it.mediaId}`} className="group">
-                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 ring-1 ring-white/10 group-hover:ring-purple-500/50">
+                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 ring-1 ring-white/10 group-hover:ring-emerald-500/50">
                       {it.posterUrl && <Image src={it.posterUrl} alt={it.title} fill className="object-cover" sizes="120px" />}
                     </div>
                     <p className="mt-1 text-xs text-center text-gray-300 line-clamp-2">{it.title}</p>

@@ -39,7 +39,7 @@ export function HomeBrowser({ trending, latest, films, series }: Props) {
             onClick={() => setTab(t.id)}
             className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
               tab === t.id
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white"
                 : "bg-white/5 text-gray-300 hover:bg-white/10"
             }`}
           >

@@ -41,28 +41,28 @@ export function Navbar() {
               alt="Streamora"
               width={36}
               height={36}
-              className="rounded-lg drop-shadow-[0_2px_8px_rgba(168,85,247,0.5)]"
+              className="rounded-lg drop-shadow-[0_2px_8px_rgba(16,185,129,0.5)]"
             />
-            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
               Streamora
             </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-1 text-gray-300">
-            <Link href="/films" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+            <Link href="/films" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
               Film
             </Link>
-            <Link href="/series" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+            <Link href="/series" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
               Série
             </Link>
-            <Link href="/tv" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+            <Link href="/tv" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
               TV
             </Link>
-            <Link href="/calendrier" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
+            <Link href="/calendrier" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
               Calendrier
             </Link>
             {userRole === "admin" && (
-              <Link href="/admin" className="px-3 py-1.5 text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors">
+              <Link href="/admin" className="px-3 py-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
                 Admin
               </Link>
             )}
@@ -75,9 +75,9 @@ export function Navbar() {
               type="text"
               name="q"
               placeholder="Tapez votre recherche ici..."
-              className="w-full rounded-md bg-white/5 border border-white/10 py-1.5 pl-3 pr-9 text-sm text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+              className="w-full rounded-md bg-white/5 border border-white/10 py-1.5 pl-3 pr-9 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
             />
-            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-purple-400" aria-label="Rechercher">
+            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400" aria-label="Rechercher">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" /></svg>
             </button>
           </div>
@@ -91,7 +91,7 @@ export function Navbar() {
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-xs font-bold ring-2 ring-transparent hover:ring-purple-500/50 transition-all">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-xs font-bold ring-2 ring-transparent hover:ring-emerald-500/50 transition-all">
                   {session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"}
                 </div>
                 <span className="hidden sm:block max-w-[100px] truncate text-sm">{session.user.name || session.user.email?.split("@")[0]}</span>
@@ -119,7 +119,7 @@ export function Navbar() {
                     TV
                   </Link>
                   {userRole === "admin" && (
-                    <Link href="/admin" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-purple-400 hover:bg-purple-500/10" onClick={() => setMenuOpen(false)}>
+                    <Link href="/admin" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10" onClick={() => setMenuOpen(false)}>
                       Admin
                     </Link>
                   )}

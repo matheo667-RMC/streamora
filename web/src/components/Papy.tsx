@@ -5,7 +5,7 @@ export function SectionHeader({ title, href }: { title: string; href: string }) 
     <div className="flex items-center justify-between mb-4">
       <Link
         href={href}
-        className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-purple-600/20 hover:from-purple-500 hover:to-pink-500 transition-colors"
+        className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-emerald-600 to-green-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-emerald-600/20 hover:from-emerald-500 hover:to-green-500 transition-colors"
       >
         {title}
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -54,19 +54,19 @@ export function PosterCard({ item }: { item: PosterItem }) {
           </span>
         )}
         {item.topRight && (
-          <span className="absolute right-0 top-0 rounded-bl-md bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-1 text-[10px] font-bold uppercase text-white">
+          <span className="absolute right-0 top-0 rounded-bl-md bg-gradient-to-r from-emerald-600 to-green-600 px-2 py-1 text-[10px] font-bold uppercase text-white">
             {item.topRight}
           </span>
         )}
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-pink-600 text-white shadow-lg">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-green-600 text-white shadow-lg">
             <svg className="h-6 w-6 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
           </span>
         </div>
       </div>
-      <p className="mt-2 truncate text-center text-sm text-gray-200 group-hover:text-purple-400 transition-colors">
+      <p className="mt-2 truncate text-center text-sm text-gray-200 group-hover:text-emerald-400 transition-colors">
         {item.title}
       </p>
     </Link>

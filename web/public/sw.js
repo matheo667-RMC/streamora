@@ -1,39 +1,43 @@
-const CACHE_NAME = "streamora-v1";
+const CACHE_NAME = "streamora-v2";
 
-// Install event
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
+self.addEventListener("install", () => {
+  // Stay in "waiting" until the page tells us to activate (update button).
 });
 
-// Activate event
 self.addEventListener("activate", (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    (async () => {
+      // Purge caches from previous versions so old assets (logo, theme…) disappear.
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })()
+  );
 });
 
-// Fetch event - network first, fallback to cache
+// Let the page trigger activation of a freshly installed worker.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+// Network-first, fallback to cache (so users always get the latest when online).
 self.addEventListener("fetch", (event) => {
-  // Only cache GET requests
   if (event.request.method !== "GET") return;
-  
-  // Skip API requests and video streams
+
   const url = new URL(event.request.url);
   if (url.pathname.startsWith("/api/") || url.pathname.includes("video")) return;
-  
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses
         if (response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
       })
-      .catch(() => {
-        // Fallback to cache
-        return caches.match(event.request);
-      })
+      .catch(() => caches.match(event.request))
   );
 });

@@ -65,7 +65,7 @@ export default function TVPage() {
       {/* Header */}
       <div className="px-6 pt-24 pb-4">
         <h1 className="text-3xl font-bold mb-2">
-          <span className="text-purple-400">📺</span> TV en Direct
+          <span className="text-emerald-400">📺</span> TV en Direct
         </h1>
         <p className="text-gray-400 text-sm">Regarde les chaînes TV françaises en direct</p>
       </div>
@@ -98,7 +98,7 @@ export default function TVPage() {
             onClick={() => setFilter(c)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               filter === c
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
                 : "bg-white/5 text-gray-300 hover:bg-white/10"
             }`}
           >
@@ -115,7 +115,7 @@ export default function TVPage() {
             onClick={() => playChannel(channel)}
             className={`group relative flex flex-col items-center p-4 rounded-xl transition-all duration-200 ${
               activeChannel?.id === channel.id
-                ? "bg-purple-600/20 border border-purple-500/50 shadow-lg shadow-purple-600/10 ring-2 ring-purple-500/30"
+                ? "bg-emerald-600/20 border border-emerald-500/50 shadow-lg shadow-emerald-600/10 ring-2 ring-emerald-500/30"
                 : "bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:scale-105"
             }`}
           >
@@ -125,7 +125,7 @@ export default function TVPage() {
                 src={channel.logo}
                 alt={channel.name}
                 className="w-14 h-14 object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239333ea'%3E%3Cpath d='M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z'/%3E%3C/svg%3E"; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'%3E%3Cpath d='M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z'/%3E%3C/svg%3E"; }}
               />
             </div>
 

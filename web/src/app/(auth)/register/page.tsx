@@ -52,17 +52,17 @@ export default function RegisterPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4">
-      <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-950 to-purple-950/30" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent" />
+      <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-950 to-emerald-950/30" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/10 via-transparent to-transparent" />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-black/70 backdrop-blur-2xl p-8 md:p-10 shadow-2xl shadow-purple-900/10">
+      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-black/70 backdrop-blur-2xl p-8 md:p-10 shadow-2xl shadow-emerald-900/10">
         <div className="mb-8 text-center">
           <Image
             src="/logo.png"
             alt="Streamora"
             width={64}
             height={64}
-            className="mx-auto rounded-xl shadow-lg shadow-purple-900/20"
+            className="mx-auto rounded-xl shadow-lg shadow-emerald-900/20"
           />
           <h1 className="mt-4 text-2xl sm:text-3xl font-bold">Rejoins Streamora</h1>
           <p className="mt-2 text-sm text-gray-500">Crée ton compte gratuitement</p>
@@ -101,7 +101,7 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
           />
 
           <input
@@ -110,7 +110,7 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
           />
 
           <input
@@ -120,13 +120,13 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors"
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
           />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3.5 font-semibold text-white hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 transition-all"
+            className="w-full rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-3.5 font-semibold text-white hover:from-emerald-500 hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
           >
             {loading ? "Création..." : "Créer mon compte"}
           </button>
@@ -134,7 +134,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-gray-400">
           Déjà un compte ?{" "}
-          <Link href="/login" className="text-purple-400 hover:text-purple-300 font-medium">
+          <Link href="/login" className="text-emerald-400 hover:text-emerald-300 font-medium">
             Se connecter
           </Link>
         </p>

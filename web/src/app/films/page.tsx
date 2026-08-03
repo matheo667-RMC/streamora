@@ -80,10 +80,10 @@ export default async function FilmsPage({ searchParams }: Props) {
     <Navbar />
     <div className="min-h-screen bg-[#0f0f23]">
       <div className="relative pt-20 pb-6 px-4 sm:px-6">
-        <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 to-transparent h-48" />
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 to-transparent h-48" />
         <div className="relative mx-auto max-w-[1400px]">
           <div className="flex items-center gap-3 mb-4">
-            <h1 className="flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-lg font-bold">
+            <h1 className="flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-lg font-bold">
               Films
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </h1>
@@ -98,7 +98,7 @@ export default async function FilmsPage({ searchParams }: Props) {
           <div className="grid grid-cols-3 gap-3 sm:gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
             {films.map((film) => (
               <Link key={film.id} href={`/films/${film.id}`} className="group">
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-purple-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-purple-900/30">
+                <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-emerald-500/50 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-emerald-900/30">
                   {film.posterUrl ? (
                     <Image
                       src={film.posterUrl}
@@ -108,7 +108,7 @@ export default async function FilmsPage({ searchParams }: Props) {
                       sizes="(max-width: 640px) 33vw, (max-width: 1024px) 20vw, 14vw"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/30 to-pink-900/30 text-gray-600">
+                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-emerald-900/30 to-green-900/30 text-gray-600">
                       <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
                       </svg>
@@ -116,11 +116,11 @@ export default async function FilmsPage({ searchParams }: Props) {
                   )}
                   {/* HD badge */}
                   <div className="absolute top-1.5 left-1.5">
-                    <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[9px] font-bold leading-none">HD</span>
+                    <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold leading-none">HD</span>
                   </div>
                   {/* Category badge */}
                   <div className="absolute top-1.5 right-1.5">
-                    <span className="rounded bg-pink-600/90 px-1.5 py-0.5 text-[9px] font-bold leading-none">{film.category}</span>
+                    <span className="rounded bg-green-600/90 px-1.5 py-0.5 text-[9px] font-bold leading-none">{film.category}</span>
                   </div>
                 </div>
                 <p className="mt-2 text-xs sm:text-sm text-center text-gray-300 line-clamp-2 group-hover:text-white transition-colors">{film.title}</p>
@@ -140,7 +140,7 @@ export default async function FilmsPage({ searchParams }: Props) {
             )}
             <span className="px-3 py-2 text-gray-400">Page {page} / {totalPages}</span>
             {page < totalPages && (
-              <Link href={buildHref(page + 1)} className="rounded-md bg-purple-600 px-4 py-2 font-medium hover:bg-purple-500 transition-colors">Suivant</Link>
+              <Link href={buildHref(page + 1)} className="rounded-md bg-emerald-600 px-4 py-2 font-medium hover:bg-emerald-500 transition-colors">Suivant</Link>
             )}
           </div>
         )}
