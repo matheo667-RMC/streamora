@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
+import { VideoUploader } from "@/components/VideoUploader";
 
 const ADMIN_EMAIL = "max350457@gmail.com";
 const ADMIN_PASSWORD = "2017";
@@ -501,6 +502,16 @@ export default function AdminPage() {
               <div className="text-center mb-2">
                 <h2 className="text-xl font-bold">Video <span className="text-emerald-500">&rarr;</span> URL</h2>
                 <p className="text-sm text-gray-400 mt-1">Transforme ton film en lien pour l&apos;ajouter au site</p>
+              </div>
+
+              {/* Upload video -> public link */}
+              <VideoUploader onUploaded={(u) => setConvertedUrls(prev => [{ fileName: "Vidéo uploadée", url: u, size: "Lien public" }, ...prev])} />
+
+              {/* OR separator */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-xs text-gray-500 font-medium">OU coller un lien</span>
+                <div className="flex-1 h-px bg-white/10" />
               </div>
 
               {/* Paste any direct URL - PRIMARY method */}
