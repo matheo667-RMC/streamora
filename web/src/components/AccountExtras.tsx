@@ -142,19 +142,10 @@ export function AccountExtras() {
         </div>
       </div>
 
-      {/* Subscription + stats */}
+      {/* Stats */}
       <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Mon abonnement & statistiques</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="rounded-xl bg-gradient-to-br from-purple-600/20 to-pink-600/10 p-4">
-            <div className="text-xs text-gray-400">Abonnement</div>
-            <div className="text-lg font-bold">
-              {sub?.founder ? "Fondateur" : sub?.hasAccess ? sub.planLabel : "Gratuit"}
-            </div>
-            {sub?.planExpiresAt && !sub.founder && (
-              <div className="text-[10px] text-gray-500 mt-1">Expire le {new Date(sub.planExpiresAt).toLocaleDateString("fr-FR")}</div>
-            )}
-          </div>
+        <h2 className="text-lg font-semibold mb-4">Mes statistiques</h2>
+        <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-white/5 p-4">
             <div className="text-xs text-gray-400">Temps total</div>
             <div className="text-lg font-bold">{fmtTime(sub?.watchSeconds || 0)}</div>
@@ -173,11 +164,6 @@ export function AccountExtras() {
               ))}
             </div>
           </div>
-        )}
-        {!sub?.hasAccess && !sub?.founder && (
-          <Link href="/payer" className="mt-4 inline-block rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold">
-            Passer Premium
-          </Link>
         )}
       </div>
 

@@ -200,7 +200,7 @@ export default function AccountPage() {
             </div>
           </div>
 
-          {/* Subscription, stats & library */}
+          {/* Stats & library */}
           <AccountExtras />
 
           {/* Change password */}

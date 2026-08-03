@@ -61,10 +61,6 @@ export function Navbar() {
             <Link href="/calendrier" className="px-3 py-1.5 text-sm font-semibold hover:text-purple-400 transition-colors">
               Calendrier
             </Link>
-            <Link href="/payer" className="px-3 py-1.5 text-sm font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent hover:from-purple-300 hover:to-pink-300 transition-colors">
-              Premium
-            </Link>
-
             {userRole === "admin" && (
               <Link href="/admin" className="px-3 py-1.5 text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors">
                 Admin
@@ -122,10 +118,6 @@ export function Navbar() {
                   <Link href="/tv" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
                     TV
                   </Link>
-                  <Link href="/payer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-pink-400 hover:bg-white/5" onClick={() => setMenuOpen(false)}>
-                    Premium
-                  </Link>
-
                   {userRole === "admin" && (
                     <Link href="/admin" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-purple-400 hover:bg-purple-500/10" onClick={() => setMenuOpen(false)}>
                       Admin

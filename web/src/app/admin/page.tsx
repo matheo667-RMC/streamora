@@ -331,7 +331,7 @@ export default function AdminPage() {
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Panneau Admin</span>
             </h1>
             <a href="/admin/premium" className="rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold">
-              Premium & Utilisateurs →
+              Utilisateurs & Réglages →
             </a>
           </div>
 
