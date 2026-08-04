@@ -530,15 +530,15 @@ export default function AdminPage() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold text-sm">1</div>
-                    <p className="text-xs text-gray-400">Recupere le lien video (ton serveur, un lien direct .mp4, Google Drive...)</p>
+                    <p className="text-xs text-gray-400">Lance ton serveur et enregistre son adresse dans « Adresse de mon serveur »</p>
                   </div>
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold text-sm">2</div>
-                    <p className="text-xs text-gray-400">Colle-le ci-dessus (ou convertis un lien Drive) et copie l&apos;URL generee</p>
+                    <p className="text-xs text-gray-400">Envoie une vidéo ci-dessus : elle va sur ton disque dur et donne un lien public</p>
                   </div>
                   <div className="space-y-2">
                     <div className="mx-auto h-9 w-9 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold text-sm">3</div>
-                    <p className="text-xs text-gray-400">Colle-la dans le champ Video d&apos;un film/serie, ajoute titre + affiche</p>
+                    <p className="text-xs text-gray-400">Colle ce lien dans le champ Vidéo d&apos;un film/série, ajoute titre + affiche</p>
                   </div>
                 </div>
               </div>

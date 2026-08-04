@@ -30,30 +30,24 @@ export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => vo
 
     setUploading(true);
     try {
-      const publicUrl: string = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", `${base}/upload`);
-        xhr.setRequestHeader("X-Filename", encodeURIComponent(file.name));
-        xhr.setRequestHeader("Content-Type", "application/octet-stream");
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              resolve(`${base}${data.url}`);
-            } catch {
-              reject(new Error("Réponse du serveur invalide"));
-            }
-          } else {
-            reject(new Error(`Le serveur a répondu ${xhr.status}`));
-          }
-        };
-        xhr.onerror = () =>
-          reject(new Error("Impossible de joindre ton serveur (est-il bien lancé ?)"));
-        xhr.send(file);
-      });
+      // Public tunnels limit request size, so we send the file in small chunks.
+      const CHUNK = 6 * 1024 * 1024;
+      const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const total = file.size;
+      let publicUrl = "";
+
+      for (let offset = 0, index = 0; offset < total || index === 0; offset += CHUNK, index++) {
+        const slice = file.slice(offset, offset + CHUNK);
+        const isLast = offset + CHUNK >= total;
+        const res = await sendChunk(base, file.name, uploadId, index, isLast, slice, (loaded) =>
+          setProgress(Math.min(100, Math.round(((offset + loaded) / total) * 100)))
+        );
+        if (isLast) {
+          publicUrl = `${base}${res.url}`;
+          break;
+        }
+      }
+      setProgress(100);
       setUrl(publicUrl);
       onUploaded?.(publicUrl);
     } catch (err) {
@@ -61,6 +55,43 @@ export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => vo
     } finally {
       setUploading(false);
     }
+  }
+
+  function sendChunk(
+    base: string,
+    filename: string,
+    uploadId: string,
+    index: number,
+    isLast: boolean,
+    blob: Blob,
+    onProg: (loaded: number) => void
+  ): Promise<{ url: string }> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${base}/upload`);
+      xhr.setRequestHeader("Content-Type", "application/octet-stream");
+      xhr.setRequestHeader("X-Filename", encodeURIComponent(filename));
+      xhr.setRequestHeader("X-Upload-Id", uploadId);
+      xhr.setRequestHeader("X-Chunk-Index", String(index));
+      xhr.setRequestHeader("X-Last", isLast ? "1" : "0");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProg(e.loaded);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch {
+            reject(new Error("Réponse du serveur invalide"));
+          }
+        } else {
+          reject(new Error(`Le serveur a répondu ${xhr.status}`));
+        }
+      };
+      xhr.onerror = () =>
+        reject(new Error("Impossible de joindre ton serveur (est-il bien lancé ?)"));
+      xhr.send(blob);
+    });
   }
 
   function copy() {

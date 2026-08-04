@@ -215,8 +215,10 @@ class MediaHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _handle_upload(self):
-        """Receive a raw video body and save it on the first drive (the hard
-        disk). Returns the relative /media/... URL of the stored file."""
+        """Receive ONE chunk of a video and append it to a part file on the
+        first drive (the hard disk). Public tunnels (serveo) cap request bodies
+        at a few MB, so the browser sends the file in small chunks. On the last
+        chunk we finalise the file and return its /media/... URL."""
         if not self.media_dirs:
             self._json(500, {"error": "Aucun disque"})
             return
@@ -224,18 +226,43 @@ class MediaHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             length = 0
-        if length <= 0:
-            self._json(400, {"error": "Fichier vide"})
-            return
 
         raw_name = urllib.parse.unquote(self.headers.get("X-Filename", "video.mp4"))
         name = re.sub(r"[^A-Za-z0-9._ -]", "_", os.path.basename(raw_name)).strip() or "video.mp4"
         if os.path.splitext(name)[1].lower() not in VIDEO_EXTENSIONS:
             name += ".mp4"
 
+        upload_id = re.sub(r"[^A-Za-z0-9._-]", "_", self.headers.get("X-Upload-Id", name))[:80] or "up"
+        try:
+            index = int(self.headers.get("X-Chunk-Index", "0"))
+        except ValueError:
+            index = 0
+        is_last = self.headers.get("X-Last", "0") == "1"
+
         base = self.media_dirs[0]["path"]
         updir = os.path.join(base, "Streamora-Uploads")
         os.makedirs(updir, exist_ok=True)
+        part = os.path.join(updir, ".part-" + upload_id)
+
+        remaining = length
+        buf = 1024 * 1024
+        try:
+            with open(part, "wb" if index == 0 else "ab") as f:
+                while remaining > 0:
+                    data = self.rfile.read(min(buf, remaining))
+                    if not data:
+                        break
+                    f.write(data)
+                    remaining -= len(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError) as exc:
+            self._json(500, {"error": f"Envoi interrompu: {exc}"})
+            return
+
+        if not is_last:
+            self._json(200, {"ok": True})
+            return
+
+        # Finalise: give the file a unique final name.
         dest = os.path.join(updir, name)
         stem, ext = os.path.splitext(name)
         n = 1
@@ -243,24 +270,7 @@ class MediaHandler(BaseHTTPRequestHandler):
             name = f"{stem}-{n}{ext}"
             dest = os.path.join(updir, name)
             n += 1
-
-        remaining = length
-        chunk = 1024 * 1024
-        try:
-            with open(dest, "wb") as f:
-                while remaining > 0:
-                    data = self.rfile.read(min(chunk, remaining))
-                    if not data:
-                        break
-                    f.write(data)
-                    remaining -= len(data)
-        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError) as exc:
-            try:
-                os.remove(dest)
-            except OSError:
-                pass
-            self._json(500, {"error": f"Envoi interrompu: {exc}"})
-            return
+        os.replace(part, dest)
 
         rel = "Streamora-Uploads/" + name
         self._json(200, {"url": "/media/0/" + urllib.parse.quote(rel), "name": name})
