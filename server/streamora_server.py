@@ -332,14 +332,14 @@ button.c:hover{background:#059669}
 .ok{background:#16a34a!important}
 </style></head><body>
 <h1>Streamora — Mes fichiers</h1>
-<p>1) Dans Streamora : Admin → Serveur → colle l'adresse publique de ton serveur (elle s'affiche dans la fenêtre du lanceur).<br>
-2) Ici : clique « Copier le lien », puis colle-le dans Admin → Ajouter un film/épisode → URL vidéo.</p>
+<p>Clique « Copier le lien » à côté d'un film, puis colle-le dans Streamora :
+Admin → Ajouter/Éditer un film ou épisode → champ « URL Vidéo ». C'est tout !</p>
 <table><thead><tr><th>Fichier</th><th>Taille</th><th>Lien</th></tr></thead>
 <tbody>__ROWS__</tbody></table>
 <script>
 document.querySelectorAll('button.c').forEach(function(b){
   b.addEventListener('click',function(){
-    var url=b.dataset.u;
+    var url=location.origin+b.dataset.u;
     navigator.clipboard.writeText(url).then(function(){
       var t=b.textContent;b.textContent='Copié !';b.classList.add('ok');
       setTimeout(function(){b.textContent=t;b.classList.remove('ok');},1500);
