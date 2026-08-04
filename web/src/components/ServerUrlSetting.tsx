@@ -49,7 +49,7 @@ export function ServerUrlSetting() {
       </div>
       <p className="text-xs text-gray-400 mb-4">
         Colle ici l&apos;adresse publique de ton serveur (elle s&apos;affiche dans la fenêtre du lanceur, ex.
-        <span className="text-emerald-300"> https://xxxx.trycloudflare.com</span>). Tes films/épisodes utilisent des liens
+        <span className="text-emerald-300"> https://xxxx.serveo.net</span>). Tes films/épisodes utilisent des liens
         <span className="text-emerald-300"> /media/...</span> : si l&apos;adresse change au redémarrage, tu ne changes que cette case.
       </p>
       <div className="flex gap-2">

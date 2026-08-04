@@ -17,23 +17,24 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-REM 2) Telecharger cloudflared si absent (pour le lien public gratuit)
-if not exist "cloudflared.exe" (
-    echo [*] Telechargement de l'outil de lien public ^(cloudflared^)...
-    powershell -Command "Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'cloudflared.exe'"
-    if not exist "cloudflared.exe" (
-        echo [!] Echec du telechargement. Verifie ta connexion internet.
-        pause
-        exit /b 1
-    )
+REM 2) Verifier le client SSH integre a Windows (signe Microsoft, non bloque)
+where ssh >nul 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo [!] Le client OpenSSH de Windows est absent.
+    echo     Active-le : Parametres ^> Applications ^> Fonctionnalites facultatives
+    echo                 ^> "Ajouter une fonctionnalite" ^> "Client OpenSSH" ^> Installer.
+    echo     Puis relance ce fichier.
+    echo.
+    pause
+    exit /b 1
 )
 
 REM 3) Lancer le serveur de fichiers dans une autre fenetre
 echo [*] Demarrage du serveur de fichiers...
 start "Streamora Media Server" cmd /k python streamora_server.py
 
-REM Attendre que le serveur reponde vraiment (le 1er lancement demande les lecteurs)
-echo [*] Attente du demarrage du serveur (indique tes lecteurs dans l'autre fenetre)...
+REM Attendre que le serveur reponde vraiment
+echo [*] Attente du demarrage du serveur...
 :waitloop
 powershell -Command "try{(Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:8090/api/files)|Out-Null;exit 0}catch{exit 1}" >nul 2>nul
 if errorlevel 1 (
@@ -44,16 +45,22 @@ echo [*] Serveur pret !
 
 echo.
 echo ==========================================
-echo   Ton lien public va s'afficher ci-dessous
-echo   (ex: https://xxxx-xxxx.trycloudflare.com)
+echo   Ton lien public va s'afficher ci-dessous.
+echo   Cherche la ligne :
+echo      Forwarding HTTP traffic from https://xxxxx.serveo.net
 echo.
-echo   1. Ouvre ce lien dans ton navigateur
-echo   2. Tu verras la liste de tes films
-echo   3. Clique "Copier le lien" et colle-le sur Streamora
+echo   1. Copie l'adresse https://xxxxx.serveo.net
+echo   2. Sur Streamora : Admin ^> "Video -^> URL" ^> "Adresse de mon serveur"
+echo      colle l'adresse ^> Enregistrer.
+echo   3. Ouvre cette adresse dans ton navigateur pour voir tes films.
 echo.
-echo   Garde CETTE fenetre ouverte pendant que tu regardes.
-echo   Ctrl+C pour tout arreter.
+echo   Garde CETTE fenetre ouverte pendant que tu utilises le site.
 echo ==========================================
 echo.
 
-cloudflared.exe tunnel --url http://localhost:8090
+:tunnel
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -R 80:localhost:8090 serveo.net
+echo.
+echo [!] Le lien s'est coupe (internet ou serveo). Nouvelle tentative dans 5 secondes...
+timeout /t 5 /nobreak >nul
+goto tunnel
