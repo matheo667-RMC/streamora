@@ -191,6 +191,7 @@ model SiteSettings {
   maintenanceMsg   String  @default("Streamora est en maintenance. Nous revenons bientôt !")
   maintenanceStyle String  @default("classic")
   iptvAgentUrl     String  @default("")
+  serverBaseUrl    String  @default("")
   // Payment settings (admin-configurable)
   paypalEmail      String  @default("")
   telegramHandle   String  @default("")

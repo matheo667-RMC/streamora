@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { VideoUploader } from "@/components/VideoUploader";
+import { ServerUrlSetting } from "@/components/ServerUrlSetting";
 
 const ADMIN_EMAIL = "max350457@gmail.com";
 const ADMIN_PASSWORD = "2017";
@@ -503,6 +504,9 @@ export default function AdminPage() {
                 <h2 className="text-xl font-bold">Video <span className="text-emerald-500">&rarr;</span> URL</h2>
                 <p className="text-sm text-gray-400 mt-1">Transforme ton film en lien pour l&apos;ajouter au site</p>
               </div>
+
+              {/* Server base URL (for /media/... links from the PC server) */}
+              <ServerUrlSetting />
 
               {/* Upload video -> public link */}
               <VideoUploader onUploaded={(u) => setConvertedUrls(prev => [{ fileName: "Vidéo uploadée", url: u, size: "Lien public" }, ...prev])} />

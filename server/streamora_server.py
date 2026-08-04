@@ -286,22 +286,23 @@ class MediaHandler(BaseHTTPRequestHandler):
 <title>Streamora — Mes fichiers</title>
 <style>
 body{font-family:system-ui,Arial,sans-serif;background:#0f0f23;color:#eee;margin:0;padding:24px}
-h1{color:#a855f7}p{color:#aaa}
+h1{color:#10b981}p{color:#aaa}
 table{width:100%;border-collapse:collapse;margin-top:16px}
 td,th{padding:10px;border-bottom:1px solid #ffffff14;text-align:left;font-size:14px}
 .s{color:#888;white-space:nowrap}
-button.c{background:#7c3aed;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600}
-button.c:hover{background:#9333ea}
+button.c{background:#10b981;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600}
+button.c:hover{background:#059669}
 .ok{background:#16a34a!important}
 </style></head><body>
 <h1>Streamora — Mes fichiers</h1>
-<p>Clique sur « Copier le lien », puis colle-le dans Streamora (admin → ajouter un film → URL vidéo).</p>
+<p>1) Dans Streamora : Admin → Serveur → colle l'adresse publique de ton serveur (elle s'affiche dans la fenêtre du lanceur).<br>
+2) Ici : clique « Copier le lien », puis colle-le dans Admin → Ajouter un film/épisode → URL vidéo.</p>
 <table><thead><tr><th>Fichier</th><th>Taille</th><th>Lien</th></tr></thead>
 <tbody>__ROWS__</tbody></table>
 <script>
 document.querySelectorAll('button.c').forEach(function(b){
   b.addEventListener('click',function(){
-    var url=location.origin+b.dataset.u;
+    var url=b.dataset.u;
     navigator.clipboard.writeText(url).then(function(){
       var t=b.textContent;b.textContent='Copié !';b.classList.add('ok');
       setTimeout(function(){b.textContent=t;b.classList.remove('ok');},1500);

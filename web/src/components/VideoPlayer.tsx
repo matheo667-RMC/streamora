@@ -165,13 +165,33 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
 
   // Set video URL - use proxy for Google Drive files (streams at full quality)
   useEffect(() => {
-    if (!driveFileId) {
+    let cancelled = false;
+    async function resolve() {
+      if (driveFileId) {
+        setResolvedUrl(`/api/video-proxy?id=${driveFileId}`);
+        setLoading(false);
+        return;
+      }
+      // Relative server path (/media/...) -> prepend the admin-configured server base URL.
+      const isServerPath = /^\/?media\//i.test(videoUrl);
+      if (isServerPath) {
+        try {
+          const res = await fetch("/api/server-url", { cache: "no-store" });
+          const data = await res.json();
+          const base = (data.serverBaseUrl || "").replace(/\/+$/, "");
+          const path = videoUrl.startsWith("/") ? videoUrl : `/${videoUrl}`;
+          if (!cancelled) setResolvedUrl(base ? `${base}${path}` : videoUrl);
+        } catch {
+          if (!cancelled) setResolvedUrl(videoUrl);
+        }
+        if (!cancelled) setLoading(false);
+        return;
+      }
       setResolvedUrl(videoUrl);
-    } else {
-      // Use our streaming proxy endpoint directly as video source
-      setResolvedUrl(`/api/video-proxy?id=${driveFileId}`);
+      setLoading(false);
     }
-    setLoading(false);
+    resolve();
+    return () => { cancelled = true; };
   }, [videoUrl, driveFileId]);
 
   const togglePlay = () => {
