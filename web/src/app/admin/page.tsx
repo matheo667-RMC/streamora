@@ -54,9 +54,7 @@ export default function AdminPage() {
 
   // Video converter
   const [convertedUrls, setConvertedUrls] = useState<{ fileName: string; url: string; size: string }[]>([]);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
-  const [driveUrl, setDriveUrl] = useState("");
   const [stats, setStats] = useState<Record<string, number>>({});
   const [films, setFilms] = useState<Film[]>([]);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
@@ -294,27 +292,6 @@ export default function AdminPage() {
     loadData();
   }
 
-  function convertDriveUrl(url: string) {
-    setUploadError(null);
-    // Extract Google Drive file ID from various URL formats
-    let fileId = "";
-    const patterns = [
-      /\/file\/d\/([a-zA-Z0-9_-]+)/,
-      /[?&]id=([a-zA-Z0-9_-]+)/,
-      /\/open\?id=([a-zA-Z0-9_-]+)/,
-    ];
-    for (const p of patterns) {
-      const m = url.match(p);
-      if (m) { fileId = m[1]; break; }
-    }
-    if (!fileId) {
-      setUploadError("Lien Google Drive invalide. Colle un lien du type : https://drive.google.com/file/d/.../view");
-      return;
-    }
-    const proxyUrl = `/api/video-proxy?id=${fileId}`;
-    setConvertedUrls(prev => [{ fileName: `Google Drive (${fileId.slice(0, 10)}...)`, url: proxyUrl, size: "Google Drive" }, ...prev]);
-  }
-
   const tabs = [
     { key: "dashboard" as const, label: "Dashboard", icon: "&#x1f4ca;" },
     { key: "films" as const, label: "Films", icon: "&#x1f3ac;" },
@@ -508,87 +485,8 @@ export default function AdminPage() {
               {/* Server base URL (for /media/... links from the PC server) */}
               <ServerUrlSetting />
 
-              {/* Upload video -> public link */}
+              {/* Upload video -> public link (stored on the user's hard drive) */}
               <VideoUploader onUploaded={(u) => setConvertedUrls(prev => [{ fileName: "Vidéo uploadée", url: u, size: "Lien public" }, ...prev])} />
-
-              {/* OR separator */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-xs text-gray-500 font-medium">OU coller un lien</span>
-                <div className="flex-1 h-px bg-white/10" />
-              </div>
-
-              {/* Paste any direct URL - PRIMARY method */}
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6">
-                <div className="flex items-center gap-2 mb-1">
-                  <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" /></svg>
-                  <h3 className="font-bold text-base">Coller n&apos;importe quel lien video</h3>
-                  <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Recommande</span>
-                </div>
-                <p className="text-xs text-gray-400 mb-4">Ton serveur perso, un lien direct (.mp4), un embed, Google Drive... colle simplement l&apos;adresse ci-dessous.</p>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    id="directUrlInput"
-                    placeholder="https://... (colle ton lien video ici)"
-                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
-                    onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        const val = (e.target as HTMLInputElement).value.trim();
-                        if (val) { setConvertedUrls(prev => [{ fileName: "URL directe", url: val, size: "Lien" }, ...prev]); (e.target as HTMLInputElement).value = ""; }
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      const inp = document.getElementById("directUrlInput") as HTMLInputElement;
-                      const val = inp?.value.trim();
-                      if (val) { setConvertedUrls(prev => [{ fileName: "URL directe", url: val, size: "Lien" }, ...prev]); inp.value = ""; }
-                    }}
-                    className="shrink-0 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
-                  >
-                    Ajouter
-                  </button>
-                </div>
-              </div>
-
-              {uploadError && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{uploadError}</div>
-              )}
-
-              {/* OR separator */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-xs text-gray-500 font-medium">OU via Google Drive</span>
-                <div className="flex-1 h-px bg-white/10" />
-              </div>
-
-              {/* Google Drive converter - optional */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-                <h3 className="font-bold text-sm text-gray-300 mb-1 flex items-center gap-2">
-                  <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7.71 3.5L1.15 15l4.58 7.5h13.54L12 3.5H7.71zm5.77 0l7.44 12.88-3.56 6.12H22l-4.48-7.5L12.48 3.5h1z" /></svg>
-                  Convertir un lien Google Drive
-                </h3>
-                <p className="text-xs text-gray-500 mb-3">Colle un lien de partage Drive (&laquo; Tous les utilisateurs disposant du lien &raquo;) pour le transformer en lien de streaming.</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={driveUrl}
-                    onChange={e => setDriveUrl(e.target.value)}
-                    placeholder="https://drive.google.com/file/d/.../view"
-                    className="flex-1 rounded-lg border border-white/10 bg-black/40 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
-                    onKeyDown={e => { if (e.key === "Enter" && driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
-                  />
-                  <button
-                    onClick={() => { if (driveUrl.trim()) { convertDriveUrl(driveUrl.trim()); setDriveUrl(""); } }}
-                    disabled={!driveUrl.trim()}
-                    className="shrink-0 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors"
-                  >
-                    Convertir
-                  </button>
-                </div>
-              </div>
 
               {/* Results */}
               {convertedUrls.length > 0 && (

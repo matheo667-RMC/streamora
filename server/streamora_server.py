@@ -165,8 +165,8 @@ class MediaHandler(BaseHTTPRequestHandler):
 
     def send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", self.allowed_origins)
-        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Range, Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Range, Content-Type, X-Filename")
         self.send_header("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges")
 
     def do_OPTIONS(self):
@@ -192,6 +192,78 @@ class MediaHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             # Le navigateur a coupe la connexion (avance rapide, pause...). Sans gravite.
             pass
+
+    def do_POST(self):
+        try:
+            parsed = urllib.parse.urlparse(self.path)
+            if parsed.path == "/upload":
+                self._handle_upload()
+                return
+            self.send_response(404)
+            self.send_cors_headers()
+            self.end_headers()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass
+
+    def _json(self, code, payload):
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_cors_headers()
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _handle_upload(self):
+        """Receive a raw video body and save it on the first drive (the hard
+        disk). Returns the relative /media/... URL of the stored file."""
+        if not self.media_dirs:
+            self._json(500, {"error": "Aucun disque"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length <= 0:
+            self._json(400, {"error": "Fichier vide"})
+            return
+
+        raw_name = urllib.parse.unquote(self.headers.get("X-Filename", "video.mp4"))
+        name = re.sub(r"[^A-Za-z0-9._ -]", "_", os.path.basename(raw_name)).strip() or "video.mp4"
+        if os.path.splitext(name)[1].lower() not in VIDEO_EXTENSIONS:
+            name += ".mp4"
+
+        base = self.media_dirs[0]["path"]
+        updir = os.path.join(base, "Streamora-Uploads")
+        os.makedirs(updir, exist_ok=True)
+        dest = os.path.join(updir, name)
+        stem, ext = os.path.splitext(name)
+        n = 1
+        while os.path.exists(dest):
+            name = f"{stem}-{n}{ext}"
+            dest = os.path.join(updir, name)
+            n += 1
+
+        remaining = length
+        chunk = 1024 * 1024
+        try:
+            with open(dest, "wb") as f:
+                while remaining > 0:
+                    data = self.rfile.read(min(chunk, remaining))
+                    if not data:
+                        break
+                    f.write(data)
+                    remaining -= len(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError) as exc:
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            self._json(500, {"error": f"Envoi interrompu: {exc}"})
+            return
+
+        rel = "Streamora-Uploads/" + name
+        self._json(200, {"url": "/media/0/" + urllib.parse.quote(rel), "name": name})
 
     def _all_files(self):
         """Yield (drive_index, rel_path, full_path, size) for every media file."""

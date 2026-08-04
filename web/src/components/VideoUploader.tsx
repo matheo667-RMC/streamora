@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { upload } from "@vercel/blob/client";
 
 export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -15,17 +14,48 @@ export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => vo
     setError("");
     setUrl("");
     setProgress(0);
+
+    // The file is stored on the user's own hard drive, through their PC server.
+    let base = "";
+    try {
+      const res = await fetch("/api/server-url", { cache: "no-store" });
+      base = ((await res.json()).serverBaseUrl || "").replace(/\/+$/, "");
+    } catch {}
+    if (!base) {
+      setError(
+        "Ton serveur n'est pas configuré. Lance streamora_server.py, copie l'adresse https://…serveousercontent.com, colle-la dans « Adresse de mon serveur » puis réessaie."
+      );
+      return;
+    }
+
     setUploading(true);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const blob = await upload(`videos/${Date.now()}-${safeName}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload/video-token",
-        multipart: true,
-        onUploadProgress: (e) => setProgress(Math.round(e.percentage)),
+      const publicUrl: string = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${base}/upload`);
+        xhr.setRequestHeader("X-Filename", encodeURIComponent(file.name));
+        xhr.setRequestHeader("Content-Type", "application/octet-stream");
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(`${base}${data.url}`);
+            } catch {
+              reject(new Error("Réponse du serveur invalide"));
+            }
+          } else {
+            reject(new Error(`Le serveur a répondu ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () =>
+          reject(new Error("Impossible de joindre ton serveur (est-il bien lancé ?)"));
+        xhr.send(file);
       });
-      setUrl(blob.url);
-      onUploaded?.(blob.url);
+      setUrl(publicUrl);
+      onUploaded?.(publicUrl);
     } catch (err) {
       setError((err as Error).message || "Échec de l'envoi");
     } finally {
@@ -50,7 +80,8 @@ export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => vo
         <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Nouveau</span>
       </div>
       <p className="text-xs text-gray-400 mb-4">
-        Choisis une vidéo (n&apos;importe quelle durée). Elle s&apos;envoie et tu récupères un lien public à coller ci-dessous.
+        Choisis une vidéo (n&apos;importe quelle durée). Elle est enregistrée sur <b>ton disque dur</b> (via ton serveur)
+        et tu récupères un <b>lien public</b> à coller dans un film/épisode.
       </p>
 
       <input
