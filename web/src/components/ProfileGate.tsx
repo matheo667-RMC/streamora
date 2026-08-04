@@ -37,7 +37,7 @@ function Avatar({ avatarUrl, name, className }: { avatarUrl: string; name: strin
       </div>
     );
   }
-  if (avatarUrl.startsWith("http")) {
+  if (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:")) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={avatarUrl} alt={name} className={`object-cover ${className || ""}`} />;
   }
@@ -49,6 +49,31 @@ function Avatar({ avatarUrl, name, className }: { avatarUrl: string; name: strin
       <span style={{ fontSize: "2em" }}>{(name?.[0] || "?").toUpperCase()}</span>
     </div>
   );
+}
+
+function resizePhoto(file: File, max: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode"));
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("canvas"));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 const STORAGE_KEY = "streamora-profile";
@@ -194,14 +219,12 @@ function ProfileEditor({
     setUploading(true);
     setError("");
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      const data = await res.json();
-      if (data.url) setAvatarUrl(data.url);
-      else setError(data.error || "Échec de l'envoi de la photo");
+      // Resize the photo in the browser and keep it as a compact data URL.
+      // No server/cloud needed → works from phone gallery or PC every time.
+      const dataUrl = await resizePhoto(file, 256);
+      setAvatarUrl(dataUrl);
     } catch {
-      setError("Échec de l'envoi de la photo");
+      setError("Impossible de lire cette photo. Essaie une autre image.");
     }
     setUploading(false);
   }

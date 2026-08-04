@@ -10,6 +10,7 @@ export function Navbar() {
   const { data: session } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; avatar: string }>({ name: "", avatar: "" });
 
   useEffect(() => {
     function handleScroll() {
@@ -17,6 +18,24 @@ export function Navbar() {
     }
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    function load() {
+      try {
+        setProfile({
+          name: localStorage.getItem("streamora-profile-name") || "",
+          avatar: localStorage.getItem("streamora-profile-avatar") || "",
+        });
+      } catch {}
+    }
+    load();
+    window.addEventListener("streamora-profile-changed", load);
+    window.addEventListener("storage", load);
+    return () => {
+      window.removeEventListener("streamora-profile-changed", load);
+      window.removeEventListener("storage", load);
+    };
   }, []);
 
   useEffect(() => {
@@ -91,10 +110,17 @@ export function Navbar() {
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-xs font-bold ring-2 ring-transparent hover:ring-emerald-500/50 transition-all">
-                  {session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"}
+                <div className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-xs font-bold ring-2 ring-transparent hover:ring-emerald-500/50 transition-all">
+                  {profile.avatar.startsWith("data:") || profile.avatar.startsWith("http") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profile.avatar} alt={profile.name || "profil"} className="h-full w-full object-cover" />
+                  ) : profile.avatar.startsWith("e:") ? (
+                    <span className="text-base leading-none">{profile.avatar.slice(2)}</span>
+                  ) : (
+                    profile.name?.[0]?.toUpperCase() || session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"
+                  )}
                 </div>
-                <span className="hidden sm:block max-w-[100px] truncate text-sm">{session.user.name || session.user.email?.split("@")[0]}</span>
+                <span className="hidden sm:block max-w-[100px] truncate text-sm">{profile.name || session.user.name || session.user.email?.split("@")[0]}</span>
                 <svg className={`h-3.5 w-3.5 text-gray-500 transition-transform ${menuOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
