@@ -378,7 +378,7 @@ def start_public_tunnel(port):
                         "-o", "UserKnownHostsFile=" + os.devnull,
                         "-o", "ServerAliveInterval=60",
                         "-o", "ExitOnForwardFailure=yes",
-                        "-R", f"80:localhost:{port}",
+                        "-R", f"80:127.0.0.1:{port}",
                         "serveo.net",
                     ],
                     stdout=subprocess.PIPE,

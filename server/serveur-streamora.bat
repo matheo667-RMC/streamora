@@ -59,7 +59,7 @@ echo ==========================================
 echo.
 
 :tunnel
-ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -R 80:localhost:8090 serveo.net
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -R 80:127.0.0.1:8090 serveo.net
 echo.
 echo [!] Le lien s'est coupe (internet ou serveo). Nouvelle tentative dans 5 secondes...
 timeout /t 5 /nobreak >nul
