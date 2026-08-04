@@ -124,6 +124,18 @@ export function Navbar() {
                     </Link>
                   )}
                   <div className="hidden md:block" />
+                  <button
+                    onClick={() => {
+                      try { sessionStorage.removeItem("streamora-profile"); } catch {}
+                      setMenuOpen(false);
+                      if (window.location.pathname === "/") window.location.reload();
+                      else window.location.href = "/";
+                    }}
+                    className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                    Changer de profil
+                  </button>
                   <Link href="/account" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     Mon compte

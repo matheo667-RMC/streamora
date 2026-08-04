@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PosterItem } from "@/components/Papy";
 import { HomeBrowser } from "@/components/HomeBrowser";
+import { ProfileGate } from "@/components/ProfileGate";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <ProfileGate />
       <Navbar />
       <div className="min-h-screen bg-[#0f0f23]">
 
