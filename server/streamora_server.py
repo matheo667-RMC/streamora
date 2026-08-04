@@ -16,6 +16,10 @@ tes films avec un bouton "Copier le lien" a coller sur Streamora.
 import os
 import json
 import string
+import time
+import shutil
+import threading
+import subprocess
 import mimetypes
 import re
 import html
@@ -352,6 +356,60 @@ document.querySelectorAll('button.c').forEach(function(b){
         self.wfile.write(data)
 
 
+def start_public_tunnel(port):
+    """Open a free public link (serveo) using Windows' built-in ssh, in the
+    background, and print the URL so the user only runs ONE file."""
+    ssh = shutil.which("ssh")
+    if not ssh:
+        print("\n[!] Pas de lien public : le client 'OpenSSH' de Windows est absent.")
+        print("    Active-le : Parametres > Applications > Fonctionnalites facultatives")
+        print("    > Ajouter une fonctionnalite > 'Client OpenSSH' > Installer, puis relance.\n")
+        return
+
+    def run():
+        url_seen = None
+        while True:
+            try:
+                print("[*] Ouverture du lien public (serveo)...")
+                proc = subprocess.Popen(
+                    [
+                        ssh,
+                        "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=" + os.devnull,
+                        "-o", "ServerAliveInterval=60",
+                        "-o", "ExitOnForwardFailure=yes",
+                        "-R", f"80:localhost:{port}",
+                        "serveo.net",
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                for line in proc.stdout:
+                    line = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
+                    m = re.search(r"https://[A-Za-z0-9.-]+", line) if "Forwarding" in line else None
+                    if m and m.group(0) != url_seen:
+                        url_seen = m.group(0)
+                        print("\n==================================================")
+                        print("   TON LIEN PUBLIC :")
+                        print("   " + url_seen)
+                        print("")
+                        print("   Colle-le dans Streamora :")
+                        print("   Admin > Video->URL > 'Adresse de mon serveur' > Enregistrer")
+                        print("   (garde cette fenetre OUVERTE)")
+                        print("==================================================\n")
+                    elif line:
+                        print("[serveo] " + line)
+                proc.wait()
+            except Exception as exc:  # noqa: BLE001
+                print(f"[!] Lien public : {exc}")
+            print("[*] Lien coupe. Nouvelle tentative dans 5 secondes...")
+            time.sleep(5)
+
+    threading.Thread(target=run, daemon=True).start()
+
+
 def main():
     config = load_config()
     media_dirs = get_media_dirs(config)
@@ -372,6 +430,9 @@ def main():
     print("  (liste de tes films + bouton 'Copier le lien')")
     print("  Ctrl+C pour arreter")
     print("==========================================\n")
+
+    if config.get("public_tunnel", True):
+        start_public_tunnel(port)
 
     try:
         server.serve_forever()
