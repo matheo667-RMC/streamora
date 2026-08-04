@@ -15,6 +15,7 @@ tes films avec un bouton "Copier le lien" a coller sur Streamora.
 
 import os
 import json
+import string
 import mimetypes
 import re
 import html
@@ -57,47 +58,79 @@ def save_config(config):
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 
-def get_media_dirs(config):
-    """Return a list of {label, path}. Supports multiple drives (2 USB keys)."""
-    dirs = config.get("media_dirs")
-    if isinstance(dirs, list) and dirs:
-        valid = [d for d in dirs if os.path.isdir(d.get("path", ""))]
-        if valid:
-            return valid
-
-    # Backward compat: old single "media_dir"
-    single = config.get("media_dir", "")
-    if single and os.path.isdir(single):
-        return [{"label": "Disque 1", "path": single}]
-
-    # First launch: ask the user for one or more folders.
-    print("\n=== Configuration du serveur Streamora ===")
-    print("Indique le(s) dossier(s) ou tes films sont rangés.")
-    print("Exemple avec 2 cles USB Windows : E:\\   puis   F:\\")
-    print("Appuie sur Entree (sans rien taper) pour terminer la liste.\n")
-
-    result = []
-    i = 1
-    while True:
-        prompt = f"Dossier/lecteur n°{i} (Entree pour finir): "
-        path = input(prompt).strip().strip('"')
-        if not path:
-            break
+def detect_windows_drives():
+    """Auto-detect every drive except C: (USB keys, external hard drives...)."""
+    found = []
+    for letter in string.ascii_uppercase:
+        if letter == "C":
+            continue  # skip the system drive (too big / slow to scan)
+        path = f"{letter}:\\"
         if os.path.isdir(path):
-            result.append({"label": f"Disque {i}", "path": path})
-            i += 1
-        else:
-            print(f"  ⚠ Le dossier '{path}' n'existe pas, ignore.")
+            found.append({"label": f"Disque {letter}", "path": path})
+    return found
 
-    if not result:
-        default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
-        os.makedirs(default, exist_ok=True)
-        print(f"Aucun dossier valide. Utilisation du dossier par defaut : {default}")
-        result = [{"label": "Disque 1", "path": default}]
 
-    config["media_dirs"] = result
-    save_config(config)
-    return result
+def get_media_dirs(config):
+    """Return a list of {label, path}.
+
+    On Windows we AUTO-DETECT every plugged-in drive (USB keys + external hard
+    drives) at each launch, so a newly plugged disk is picked up automatically
+    without any manual step. Extra folders in config.json ("media_dirs") are
+    also honoured. Non-Windows keeps the manual/config behaviour.
+    """
+    result = []
+    seen = set()
+
+    # 1) Windows: automatically add every drive (except C:).
+    if os.name == "nt":
+        for d in detect_windows_drives():
+            key = os.path.normcase(d["path"])
+            if key not in seen:
+                seen.add(key)
+                result.append(d)
+
+    # 2) Any explicit folders from config (works on every OS).
+    dirs = config.get("media_dirs")
+    if isinstance(dirs, list):
+        for d in dirs:
+            p = d.get("path", "")
+            if p and os.path.isdir(p):
+                key = os.path.normcase(p)
+                if key not in seen:
+                    seen.add(key)
+                    result.append({"label": d.get("label", os.path.basename(p) or p), "path": p})
+
+    single = config.get("media_dir", "")
+    if single and os.path.isdir(single) and os.path.normcase(single) not in seen:
+        result.append({"label": "Disque 1", "path": single})
+
+    if result:
+        return result
+
+    # Nothing found. On first non-Windows launch, ask; otherwise use default folder.
+    if os.name != "nt":
+        print("\n=== Configuration du serveur Streamora ===")
+        print("Indique le(s) dossier(s) ou tes films sont rangés.")
+        print("Appuie sur Entree (sans rien taper) pour terminer la liste.\n")
+        i = 1
+        while True:
+            path = input(f"Dossier n°{i} (Entree pour finir): ").strip().strip('"')
+            if not path:
+                break
+            if os.path.isdir(path):
+                result.append({"label": f"Disque {i}", "path": path})
+                i += 1
+            else:
+                print(f"  ⚠ Le dossier '{path}' n'existe pas, ignore.")
+        if result:
+            config["media_dirs"] = result
+            save_config(config)
+            return result
+
+    default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
+    os.makedirs(default, exist_ok=True)
+    print(f"Aucun disque trouvé. Utilisation du dossier par defaut : {default}")
+    return [{"label": "Disque 1", "path": default}]
 
 
 def parse_range(range_header, file_size):
