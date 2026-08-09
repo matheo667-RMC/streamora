@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
 interface Profile {
@@ -77,8 +78,21 @@ function resizePhoto(file: File, max: number): Promise<string> {
 }
 
 const STORAGE_KEY = "streamora-profile";
+const OWNER_KEY = "streamora-profile-account";
+
+function clearSelection() {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("streamora-profile-name");
+    localStorage.removeItem("streamora-profile-avatar");
+    localStorage.removeItem(OWNER_KEY);
+  } catch {}
+  window.dispatchEvent(new CustomEvent("streamora-profile-changed"));
+}
 
 export function ProfileGate() {
+  const { data: session, status } = useSession();
+  const email = session?.user?.email || "";
   const [visible, setVisible] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,14 +100,29 @@ export function ProfileGate() {
   const [editing, setEditing] = useState<Profile | "new" | null>(null);
 
   useEffect(() => {
-    // Show the picker once per browser session (like Netflix opening the app).
+    if (status === "loading") return;
+    if (!email) {
+      // Profiles belong to an account: nothing to pick when signed out.
+      clearSelection();
+      setVisible(false);
+      return;
+    }
+
     let picked: string | null = null;
+    let owner: string | null = null;
     try {
       picked = sessionStorage.getItem(STORAGE_KEY);
+      owner = localStorage.getItem(OWNER_KEY);
     } catch {}
+    // A different account signed in → its own profiles, never the previous ones.
+    if (owner && owner !== email) {
+      clearSelection();
+      picked = null;
+    }
+    // Show the picker once per browser session (like Netflix opening the app).
     if (!picked) setVisible(true);
     load();
-  }, []);
+  }, [status, email]);
 
   async function load() {
     setLoading(true);
@@ -112,6 +141,7 @@ export function ProfileGate() {
       sessionStorage.setItem(STORAGE_KEY, p.id);
       localStorage.setItem("streamora-profile-name", p.name);
       localStorage.setItem("streamora-profile-avatar", p.avatarUrl);
+      localStorage.setItem(OWNER_KEY, email);
     } catch {}
     window.dispatchEvent(new CustomEvent("streamora-profile-changed"));
     setVisible(false);

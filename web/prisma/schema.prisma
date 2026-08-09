@@ -52,6 +52,7 @@ model User {
   signupDevice  String?
   accounts      Account[]
   sessions      Session[]
+  profiles      Profile[]
   downloads     Download[]
   redeemedKeys  RedeemKey[]
   createdAt     DateTime  @default(now())
@@ -141,11 +142,15 @@ model Episode {
 
 model Profile {
   id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   avatarUrl String   @default("")
   downloads Download[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Download {
