@@ -197,6 +197,7 @@ model SiteSettings {
   maintenanceStyle String  @default("classic")
   iptvAgentUrl     String  @default("")
   serverBaseUrl    String  @default("")
+  serverSyncKey    String  @default("")   // lets the PC server publish its public URL by itself
   // Payment settings (admin-configurable)
   paypalEmail      String  @default("")
   telegramHandle   String  @default("")

@@ -22,6 +22,7 @@ import string
 import subprocess
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,6 +30,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(HERE, "config.json")
 DEFAULT_PORT = 8090
+SITE_URL = "https://streamora-films.vercel.app"
 UPLOAD_DIRNAME = "Streamora-Uploads"
 CHUNK = 256 * 1024
 
@@ -53,6 +55,14 @@ def load_config():
             return data if isinstance(data, dict) else {}
     except (OSError, ValueError):
         return {}
+
+
+def save_config(config):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+    except OSError as exc:
+        print(f"[!] Impossible d'enregistrer config.json : {exc}")
 
 
 def detect_drives():
@@ -146,6 +156,9 @@ def parse_range(header, size):
 class MediaHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     media_dirs = []
+    # Quand la synchro est active, on copie le chemin /media/... : il reste
+    # valable meme si l'adresse publique change.
+    relative_links = False
     server_version = "Streamora"
     sys_version = ""
 
@@ -274,7 +287,10 @@ class MediaHandler(BaseHTTPRequestHandler):
             )
         body = "".join(rows) or "<tr><td colspan='4' class='empty'>Aucune video trouvee sur tes disques.</td></tr>"
         drives = " &middot; ".join(html.escape(d["label"]) for d in self.media_dirs) or "aucun"
-        return TEMPLATE.replace("__ROWS__", body).replace("__DRIVES__", drives)
+        return (TEMPLATE
+                .replace("__ROWS__", body)
+                .replace("__DRIVES__", drives)
+                .replace("__REL__", "true" if self.relative_links else "false"))
 
     # ---- streaming -------------------------------------------------------
     def _resolve(self, path):
@@ -435,9 +451,10 @@ button.c.ok{background:#22c55e}
 <tbody id="tb">__ROWS__</tbody></table>
 </div>
 <script>
+var RELATIVE=__REL__;
 document.querySelectorAll('button.c').forEach(function(b){
   b.addEventListener('click',function(){
-    var url=location.origin+b.dataset.u;
+    var url=RELATIVE?b.dataset.u:location.origin+b.dataset.u;
     function done(){var t=b.textContent;b.textContent='Copie !';b.classList.add('ok');
       setTimeout(function(){b.textContent=t;b.classList.remove('ok');},1500);}
     if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(url).then(done);}
@@ -461,11 +478,37 @@ q.addEventListener('input',refresh);refresh();
 
 
 # --------------------------------------------------------------------------
-# Lien public (ssh integre a Windows -> serveo). Aucun telechargement.
+# Lien public : ssh integre a Windows, aucun telechargement.
+# Plusieurs services sont essayes ; pinggy passe par le port 443 (celui du web)
+# donc il marche meme quand la box/le FAI bloque le port 22.
 # --------------------------------------------------------------------------
+PROVIDERS = [
+    {"name": "pinggy", "host": "a.pinggy.io", "port": 443,
+     "args": ["-p", "443", "-R0:127.0.0.1:{port}", "a.pinggy.io"],
+     "note": "lien gratuit valable 60 min, renouvele automatiquement"},
+    {"name": "serveo", "host": "serveo.net", "port": 22,
+     "args": ["-R", "80:127.0.0.1:{port}", "serveo.net"], "note": ""},
+    {"name": "localhost.run", "host": "localhost.run", "port": 22,
+     "args": ["-R", "80:127.0.0.1:{port}", "nokey@localhost.run"], "note": ""},
+]
+
+URL_RE = re.compile(r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+IGNORED_URLS = ("dashboard.pinggy.io", "localhost.run/docs", "admin.localhost.run", "twitter.com")
+
+
+def reachable(host, port, timeout=6):
+    try:
+        with socket.create_connection((host, port), timeout):
+            return True
+    except OSError:
+        return False
+
+
 class Tunnel:
-    def __init__(self, port):
+    def __init__(self, port, site_url="", sync_key=""):
         self.port = port
+        self.site_url = site_url.rstrip("/")
+        self.sync_key = sync_key
         self.url = None
 
     def start(self):
@@ -479,69 +522,135 @@ class Tunnel:
 
     def _loop(self, ssh):
         while True:
-            print("[*] Ouverture du lien public...")
-            try:
-                proc = subprocess.Popen(
-                    [ssh,
-                     "-o", "StrictHostKeyChecking=no",
-                     "-o", "UserKnownHostsFile=" + os.devnull,
-                     "-o", "ServerAliveInterval=30",
-                     "-o", "ExitOnForwardFailure=yes",
-                     # 127.0.0.1 (et pas localhost) : sur Windows localhost peut
-                     # partir en IPv6 alors que le serveur ecoute en IPv4 -> 502.
-                     "-R", f"80:127.0.0.1:{self.port}",
-                     "serveo.net"],
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    text=True, bufsize=1,
-                )
-            except OSError as exc:
-                print(f"[!] Lien public impossible : {exc}")
-                return
+            usable = [p for p in PROVIDERS if reachable(p["host"], p["port"])]
+            if not usable:
+                print("[!] Aucun service de lien public joignable (internet coupe ?).")
+                print("    Nouvelle tentative dans 15 secondes...")
+                time.sleep(15)
+                continue
+            for provider in usable:
+                self._run(ssh, provider)
+                time.sleep(3)
 
-            for line in proc.stdout:
-                line = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
-                if "Forwarding" in line:
-                    m = re.search(r"https://[A-Za-z0-9.-]+", line)
-                    if m and m.group(0) != self.url:
-                        self.url = m.group(0)
-                        self._announce()
-                elif line and "Tip" not in line and "Warning: Permanently added" not in line:
-                    print(f"  [lien] {line}")
-            proc.wait()
-            self.url = None
-            print("[*] Lien coupe. Nouvelle tentative dans 5 secondes...")
-            time.sleep(5)
+    def _run(self, ssh, provider):
+        """Ouvre un tunnel avec un service et suit sa sortie jusqu'a la coupure."""
+        print(f"[*] Ouverture du lien public ({provider['name']})...")
+        args = [ssh,
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=" + os.devnull,
+                "-o", "ServerAliveInterval=30",
+                "-o", "ExitOnForwardFailure=yes",
+                "-o", "ConnectTimeout=15"]
+        # 127.0.0.1 et pas localhost : sur Windows localhost peut partir en IPv6
+        # alors que le serveur ecoute en IPv4 -> erreur 502.
+        args += [a.format(port=self.port) for a in provider["args"]]
 
-    def _announce(self):
+        try:
+            proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, bufsize=1)
+        except OSError as exc:
+            print(f"  [!] {provider['name']} : {exc}")
+            return
+
+        self.url = None
+        for line in proc.stdout:
+            line = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
+            if not line:
+                continue
+            m = URL_RE.search(line)
+            if m and not any(bad in line for bad in IGNORED_URLS):
+                # Certains services annoncent plusieurs adresses : on garde la 1re.
+                if self.url is None:
+                    self.url = m.group(0)
+                    self._announce(provider)
+                continue
+            if "timed out" in line or "refused" in line.lower():
+                print(f"  [{provider['name']}] {line}")
+        proc.wait()
+        self.url = None
+        print(f"[*] Lien {provider['name']} coupe, on relance...")
+
+    def _announce(self, provider):
         url = self.url
         print("\n" + "=" * 62)
         print("   TON LIEN PUBLIC :")
         print("   " + url)
+        if provider.get("note"):
+            print("   (" + provider["note"] + ")")
         print("")
         print("   1. Ouvre ce lien dans ton navigateur -> liste de tes videos")
         print("   2. 'Copier le lien' -> colle dans Streamora (Admin > URL Video)")
         print("   3. Garde CETTE fenetre ouverte pendant que vous regardez")
         print("=" * 62 + "\n")
-        threading.Thread(target=self._selftest, args=(url,), daemon=True).start()
+        threading.Thread(target=self._verify_and_publish, args=(url,), daemon=True).start()
 
-    def _selftest(self, url):
-        """Verifie vraiment que le lien public atteint le serveur."""
+    def _verify_and_publish(self, url):
+        """Verifie que le lien atteint vraiment le serveur, puis envoie l'adresse
+        a Streamora pour que les liens /media/... marchent sans rien recoller."""
         time.sleep(2)
         try:
             req = urllib.request.Request(url + "/api/ping", headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=20) as resp:
+            with urllib.request.urlopen(req, timeout=25) as resp:
                 ok = resp.status == 200 and b'"ok"' in resp.read(200)
-            print("[OK] Lien public verifie : il fonctionne.\n" if ok
-                  else "[!] Le lien repond mais pas comme prevu.\n")
         except Exception as exc:  # noqa: BLE001
-            print(f"[!] Le lien public ne repond pas encore ({exc}).")
-            print("    Verifie ta connexion internet, puis relance ce fichier.\n")
+            print(f"[!] Le lien public ne repond pas ({exc}). Nouvel essai en cours...\n")
+            return
+        if not ok:
+            print("[!] Le lien repond mais pas comme prevu.\n")
+            return
+        print("[OK] Lien public verifie : il fonctionne.")
+        self._publish(url)
+
+    def _publish(self, url):
+        if not (self.site_url and self.sync_key):
+            print("    (Astuce : colle ta cle de synchro pour que Streamora se mette a jour tout seul.)\n")
+            return
+        body = json.dumps({"serverBaseUrl": url}).encode("utf-8")
+        req = urllib.request.Request(
+            self.site_url + "/api/server-url", data=body, method="POST",
+            headers={"Content-Type": "application/json", "X-Sync-Key": self.sync_key},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                if resp.status == 200:
+                    print("[OK] Adresse envoyee a Streamora : tes films marchent tout de suite.\n")
+                    return
+                print(f"[!] Streamora a repondu {resp.status}.\n")
+        except urllib.error.HTTPError as exc:
+            if exc.code == 403:
+                print("[!] Cle de synchro refusee. Recopie-la depuis Admin > Adresse de mon serveur,")
+                print("    puis supprime config.json et relance.\n")
+            else:
+                print(f"[!] Envoi a Streamora impossible ({exc}).\n")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[!] Envoi a Streamora impossible ({exc}).\n")
 
 
 # --------------------------------------------------------------------------
+def ask_sync_key(config):
+    """Une seule fois : la cle permet au serveur de publier son adresse tout seul,
+    donc l'utilisateur n'a plus jamais a recopier de lien dans Streamora."""
+    if config.get("sync_key"):
+        return config["sync_key"]
+    print("Colle ta CLE DE SYNCHRO Streamora pour que ton adresse se mette a jour")
+    print("toute seule (Admin > Adresse de mon serveur > Copier).")
+    try:
+        key = input("  Cle (ou juste Entree pour ignorer) : ").strip()
+    except (EOFError, OSError):
+        return ""
+    if key:
+        config["sync_key"] = key
+        save_config(config)
+        print("  -> Cle enregistree. Tu n'auras plus a la remettre.\n")
+    else:
+        print("  -> Ignoree. Tu devras coller l'adresse a la main dans Streamora.\n")
+    return key
+
+
 def main():
     config = load_config()
     port = int(config.get("port", DEFAULT_PORT))
+    sync_key = ask_sync_key(config)
     media_dirs = get_media_dirs(config)
     MediaHandler.media_dirs = media_dirs
 
@@ -563,8 +672,10 @@ def main():
     print("   Ctrl+C pour arreter")
     print("=" * 62 + "\n")
 
+    MediaHandler.relative_links = bool(sync_key)
+
     if config.get("public_tunnel", True):
-        Tunnel(port).start()
+        Tunnel(port, config.get("site_url", SITE_URL), sync_key).start()
 
     try:
         httpd.serve_forever()
