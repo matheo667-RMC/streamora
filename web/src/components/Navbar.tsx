@@ -74,9 +74,6 @@ export function Navbar() {
             <Link href="/series" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
               Série
             </Link>
-            <Link href="/tv" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
-              TV
-            </Link>
             <Link href="/calendrier" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
               Calendrier
             </Link>
@@ -140,9 +137,6 @@ export function Navbar() {
                   </Link>
                   <Link href="/series" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
                     Série
-                  </Link>
-                  <Link href="/tv" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                    TV
                   </Link>
                   {userRole === "admin" && (
                     <Link href="/admin" className="flex md:hidden items-center gap-2 rounded-lg px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10" onClick={() => setMenuOpen(false)}>
