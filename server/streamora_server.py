@@ -20,6 +20,7 @@ import shutil
 import socket
 import string
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -117,6 +118,17 @@ def get_media_dirs(config):
 # --------------------------------------------------------------------------
 # Utilitaires fichiers
 # --------------------------------------------------------------------------
+def say(text=""):
+    """print() sur la console Windows (cp1252) plante sur les accents venant des
+    noms de fichiers ou des services de tunnel : on remplace les caracteres
+    impossibles au lieu de laisser une exception tuer le serveur."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(text.encode(enc, "replace").decode(enc, "replace"))
+
+
 def human_size(num):
     for unit in ("o", "Ko", "Mo", "Go", "To"):
         if num < 1024:
@@ -163,7 +175,7 @@ class MediaHandler(BaseHTTPRequestHandler):
     sys_version = ""
 
     def log_message(self, fmt, *args):
-        print(f"  [{time.strftime('%H:%M:%S')}] {args[0]}")
+        say(f"  [{time.strftime('%H:%M:%S')}] {args[0]}")
 
     # ---- helpers ---------------------------------------------------------
     def cors(self):
@@ -228,7 +240,7 @@ class MediaHandler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass
         except Exception as exc:  # noqa: BLE001
-            print(f"  [!] Erreur: {exc}")
+            say(f"  [!] Erreur: {exc}")
             try:
                 self.send_text(500, f"Erreur serveur: {exc}")
             except OSError:
@@ -402,7 +414,7 @@ class MediaHandler(BaseHTTPRequestHandler):
             dest = os.path.join(updir, name)
             n += 1
         os.replace(part, dest)
-        print(f"  [+] Video enregistree sur ton disque : {dest}")
+        say(f"  [+] Video enregistree sur ton disque : {dest}")
         self.send_json(200, {
             "url": f"/media/0/{urllib.parse.quote(UPLOAD_DIRNAME + '/' + name)}",
             "name": name,
@@ -514,27 +526,32 @@ class Tunnel:
     def start(self):
         ssh = shutil.which("ssh")
         if not ssh:
-            print("\n[!] Pas de lien public : le client OpenSSH de Windows est absent.")
-            print("    Parametres > Applications > Fonctionnalites facultatives")
-            print("    > Ajouter une fonctionnalite > 'Client OpenSSH' > Installer, puis relance.\n")
+            say("\n[!] Pas de lien public : le client OpenSSH de Windows est absent.")
+            say("    Parametres > Applications > Fonctionnalites facultatives")
+            say("    > Ajouter une fonctionnalite > 'Client OpenSSH' > Installer, puis relance.\n")
             return
         threading.Thread(target=self._loop, args=(ssh,), daemon=True).start()
 
     def _loop(self, ssh):
         while True:
-            usable = [p for p in PROVIDERS if reachable(p["host"], p["port"])]
-            if not usable:
-                print("[!] Aucun service de lien public joignable (internet coupe ?).")
-                print("    Nouvelle tentative dans 15 secondes...")
-                time.sleep(15)
-                continue
-            for provider in usable:
-                self._run(ssh, provider)
-                time.sleep(3)
+            try:
+                usable = [p for p in PROVIDERS if reachable(p["host"], p["port"])]
+                if not usable:
+                    say("[!] Aucun service de lien public joignable (internet coupe ?).")
+                    say("    Nouvelle tentative dans 15 secondes...")
+                    time.sleep(15)
+                    continue
+                for provider in usable:
+                    self._run(ssh, provider)
+                    time.sleep(3)
+            except Exception as exc:  # noqa: BLE001
+                # Le lien public ne doit jamais faire tomber le serveur video.
+                say(f"[!] Probleme avec le lien public : {exc}")
+                time.sleep(10)
 
     def _run(self, ssh, provider):
         """Ouvre un tunnel avec un service et suit sa sortie jusqu'a la coupure."""
-        print(f"[*] Ouverture du lien public ({provider['name']})...")
+        say(f"[*] Ouverture du lien public ({provider['name']})...")
         args = [ssh,
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "UserKnownHostsFile=" + os.devnull,
@@ -547,9 +564,10 @@ class Tunnel:
 
         try:
             proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True, bufsize=1)
+                                    text=True, bufsize=1,
+                                    encoding="utf-8", errors="replace")
         except OSError as exc:
-            print(f"  [!] {provider['name']} : {exc}")
+            say(f"  [!] {provider['name']} : {exc}")
             return
 
         self.url = None
@@ -565,23 +583,23 @@ class Tunnel:
                     self._announce(provider)
                 continue
             if "timed out" in line or "refused" in line.lower():
-                print(f"  [{provider['name']}] {line}")
+                say(f"  [{provider['name']}] {line}")
         proc.wait()
         self.url = None
-        print(f"[*] Lien {provider['name']} coupe, on relance...")
+        say(f"[*] Lien {provider['name']} coupe, on relance...")
 
     def _announce(self, provider):
         url = self.url
-        print("\n" + "=" * 62)
-        print("   TON LIEN PUBLIC :")
-        print("   " + url)
+        say("\n" + "=" * 62)
+        say("   TON LIEN PUBLIC :")
+        say("   " + url)
         if provider.get("note"):
-            print("   (" + provider["note"] + ")")
-        print("")
-        print("   1. Ouvre ce lien dans ton navigateur -> liste de tes videos")
-        print("   2. 'Copier le lien' -> colle dans Streamora (Admin > URL Video)")
-        print("   3. Garde CETTE fenetre ouverte pendant que vous regardez")
-        print("=" * 62 + "\n")
+            say("   (" + provider["note"] + ")")
+        say("")
+        say("   1. Ouvre ce lien dans ton navigateur -> liste de tes videos")
+        say("   2. 'Copier le lien' -> colle dans Streamora (Admin > URL Video)")
+        say("   3. Garde CETTE fenetre ouverte pendant que vous regardez")
+        say("=" * 62 + "\n")
         threading.Thread(target=self._verify_and_publish, args=(url,), daemon=True).start()
 
     def _verify_and_publish(self, url):
@@ -593,17 +611,17 @@ class Tunnel:
             with urllib.request.urlopen(req, timeout=25) as resp:
                 ok = resp.status == 200 and b'"ok"' in resp.read(200)
         except Exception as exc:  # noqa: BLE001
-            print(f"[!] Le lien public ne repond pas ({exc}). Nouvel essai en cours...\n")
+            say(f"[!] Le lien public ne repond pas ({exc}). Nouvel essai en cours...\n")
             return
         if not ok:
-            print("[!] Le lien repond mais pas comme prevu.\n")
+            say("[!] Le lien repond mais pas comme prevu.\n")
             return
-        print("[OK] Lien public verifie : il fonctionne.")
+        say("[OK] Lien public verifie : il fonctionne.")
         self._publish(url)
 
     def _publish(self, url):
         if not (self.site_url and self.sync_key):
-            print("    (Astuce : colle ta cle de synchro pour que Streamora se mette a jour tout seul.)\n")
+            say("    (Astuce : colle ta cle de synchro pour que Streamora se mette a jour tout seul.)\n")
             return
         body = json.dumps({"serverBaseUrl": url}).encode("utf-8")
         req = urllib.request.Request(
@@ -613,17 +631,17 @@ class Tunnel:
         try:
             with urllib.request.urlopen(req, timeout=25) as resp:
                 if resp.status == 200:
-                    print("[OK] Adresse envoyee a Streamora : tes films marchent tout de suite.\n")
+                    say("[OK] Adresse envoyee a Streamora : tes films marchent tout de suite.\n")
                     return
-                print(f"[!] Streamora a repondu {resp.status}.\n")
+                say(f"[!] Streamora a repondu {resp.status}.\n")
         except urllib.error.HTTPError as exc:
             if exc.code == 403:
-                print("[!] Cle de synchro refusee. Recopie-la depuis Admin > Adresse de mon serveur,")
-                print("    puis supprime config.json et relance.\n")
+                say("[!] Cle de synchro refusee. Recopie-la depuis Admin > Adresse de mon serveur,")
+                say("    puis supprime config.json et relance.\n")
             else:
-                print(f"[!] Envoi a Streamora impossible ({exc}).\n")
+                say(f"[!] Envoi a Streamora impossible ({exc}).\n")
         except Exception as exc:  # noqa: BLE001
-            print(f"[!] Envoi a Streamora impossible ({exc}).\n")
+            say(f"[!] Envoi a Streamora impossible ({exc}).\n")
 
 
 # --------------------------------------------------------------------------
@@ -632,8 +650,8 @@ def ask_sync_key(config):
     donc l'utilisateur n'a plus jamais a recopier de lien dans Streamora."""
     if config.get("sync_key"):
         return config["sync_key"]
-    print("Colle ta CLE DE SYNCHRO Streamora pour que ton adresse se mette a jour")
-    print("toute seule (Admin > Adresse de mon serveur > Copier).")
+    say("Colle ta CLE DE SYNCHRO Streamora pour que ton adresse se mette a jour")
+    say("toute seule (Admin > Adresse de mon serveur > Copier).")
     try:
         key = input("  Cle (ou juste Entree pour ignorer) : ").strip()
     except (EOFError, OSError):
@@ -641,9 +659,9 @@ def ask_sync_key(config):
     if key:
         config["sync_key"] = key
         save_config(config)
-        print("  -> Cle enregistree. Tu n'auras plus a la remettre.\n")
+        say("  -> Cle enregistree. Tu n'auras plus a la remettre.\n")
     else:
-        print("  -> Ignoree. Tu devras coller l'adresse a la main dans Streamora.\n")
+        say("  -> Ignoree. Tu devras coller l'adresse a la main dans Streamora.\n")
     return key
 
 
@@ -657,20 +675,20 @@ def main():
     try:
         httpd = ThreadingHTTPServer(("0.0.0.0", port), MediaHandler)
     except OSError as exc:
-        print(f"\n[!] Impossible de demarrer sur le port {port} : {exc}")
-        print("    Une autre fenetre du serveur est peut-etre deja ouverte.")
+        say(f"\n[!] Impossible de demarrer sur le port {port} : {exc}")
+        say("    Une autre fenetre du serveur est peut-etre deja ouverte.")
         input("\nAppuie sur Entree pour fermer...")
         return
     httpd.daemon_threads = True
 
-    print("\n" + "=" * 62)
-    print("            Streamora Media Server")
-    print("=" * 62)
+    say("\n" + "=" * 62)
+    say("            Streamora Media Server")
+    say("=" * 62)
     for i, d in enumerate(media_dirs):
-        print(f"   Disque {i} : {d['path']}")
-    print(f"   Sur ce PC : http://localhost:{port}")
-    print("   Ctrl+C pour arreter")
-    print("=" * 62 + "\n")
+        say(f"   Disque {i} : {d['path']}")
+    say(f"   Sur ce PC : http://localhost:{port}")
+    say("   Ctrl+C pour arreter")
+    say("=" * 62 + "\n")
 
     MediaHandler.relative_links = bool(sync_key)
 
@@ -680,7 +698,7 @@ def main():
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\nServeur arrete.")
+        say("\nServeur arrete.")
     finally:
         httpd.server_close()
 
