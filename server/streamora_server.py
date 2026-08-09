@@ -506,6 +506,8 @@ PROVIDERS = [
 
 URL_RE = re.compile(r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 IGNORED_URLS = ("dashboard.pinggy.io", "localhost.run/docs", "admin.localhost.run", "twitter.com")
+# Bruit inutile (statistiques, avertissements ssh) : on ne l'affiche pas.
+NOISE_RE = re.compile(r"^(RB:|Pseudo-terminal|Warning: Permanently added|Tip)")
 
 
 def reachable(host, port, timeout=6):
@@ -557,7 +559,10 @@ class Tunnel:
                 "-o", "UserKnownHostsFile=" + os.devnull,
                 "-o", "ServerAliveInterval=30",
                 "-o", "ExitOnForwardFailure=yes",
-                "-o", "ConnectTimeout=15"]
+                "-o", "ConnectTimeout=15",
+                # Sinon ssh peut attendre indefiniment une saisie de mot de passe.
+                "-o", "NumberOfPasswordPrompts=0",
+                "-o", "BatchMode=yes"]
         # 127.0.0.1 et pas localhost : sur Windows localhost peut partir en IPv6
         # alors que le serveur ecoute en IPv4 -> erreur 502.
         args += [a.format(port=self.port) for a in provider["args"]]
@@ -571,8 +576,38 @@ class Tunnel:
             return
 
         self.url = None
-        for line in proc.stdout:
-            line = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
+        reader = threading.Thread(target=self._read, args=(proc, provider), daemon=True)
+        reader.start()
+
+        # Si aucun lien n'arrive, on ne reste pas bloque : on passe au suivant.
+        deadline = time.time() + 40
+        while proc.poll() is None and (self.url or time.time() < deadline):
+            time.sleep(1)
+        if proc.poll() is None and not self.url:
+            say(f"  [{provider['name']}] pas de reponse, on essaie un autre service...")
+            proc.terminate()
+
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        reader.join(timeout=5)
+        if self.url:
+            say(f"[*] Lien {provider['name']} coupe, on en rouvre un...")
+        self.url = None
+
+    def _read(self, proc, provider):
+        """Affiche tout ce que dit le service (sinon on ne sait pas ou ca coince)
+        et repere l'adresse publique. Certains services ecrivent avec des \\r."""
+        buf = ""
+        while True:
+            ch = proc.stdout.read(1)
+            if not ch:
+                break
+            if ch not in "\r\n":
+                buf += ch
+                continue
+            line, buf = re.sub(r"\x1b\[[0-9;]*m", "", buf).strip(), ""
             if not line:
                 continue
             m = URL_RE.search(line)
@@ -582,11 +617,8 @@ class Tunnel:
                     self.url = m.group(0)
                     self._announce(provider)
                 continue
-            if "timed out" in line or "refused" in line.lower():
+            if not NOISE_RE.match(line):
                 say(f"  [{provider['name']}] {line}")
-        proc.wait()
-        self.url = None
-        say(f"[*] Lien {provider['name']} coupe, on relance...")
 
     def _announce(self, provider):
         url = self.url
