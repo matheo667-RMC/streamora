@@ -74,9 +74,6 @@ export function Navbar() {
             <Link href="/series" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
               Série
             </Link>
-            <Link href="/calendrier" className="px-3 py-1.5 text-sm font-semibold hover:text-emerald-400 transition-colors">
-              Calendrier
-            </Link>
             {userRole === "admin" && (
               <Link href="/admin" className="px-3 py-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors">
                 Admin
