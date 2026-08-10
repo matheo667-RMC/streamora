@@ -1,4 +1,8 @@
+// Un lien public plafonne la taille d'une requete, mais en local on peut
+// envoyer de gros morceaux : bien plus rapide.
 const CHUNK = 6 * 1024 * 1024;
+const LOCAL_CHUNK = 48 * 1024 * 1024;
+const LOCAL_BASES = ["http://127.0.0.1:8090", "http://localhost:8090"];
 export const PENDING_KEY = "streamora-upload-pending";
 
 export type Pending = { id: string; name: string; size: number; lastModified: number };
@@ -27,6 +31,24 @@ export async function serverBase(): Promise<string> {
   } catch {
     return "";
   }
+}
+
+/** Sur le PC qui heberge le serveur, passer par 127.0.0.1 evite l'aller-retour
+ *  par Internet : l'envoi se fait a la vitesse du disque au lieu du debit
+ *  montant de la box (des heures de gagnees sur un film). */
+export async function fastBase(fallback: string): Promise<string> {
+  for (const base of LOCAL_BASES) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 1500);
+      const res = await fetch(`${base}/api/ping`, { cache: "no-store", signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) return base;
+    } catch {
+      /* pas sur le meme PC : on garde l'adresse publique */
+    }
+  }
+  return fallback;
 }
 
 export const NO_SERVER =
@@ -74,6 +96,9 @@ function sendChunk(
 export async function uploadVideo(file: File, onProgress: (percent: number) => void): Promise<string> {
   const base = await serverBase();
   if (!base) throw new Error(NO_SERVER);
+  // On envoie au plus vite, mais l'URL gardee reste l'adresse publique pour que
+  // les autres appareils puissent lire la video.
+  const sendBase = await fastBase(base);
 
   const saved = readPending();
   const resumable =
@@ -83,7 +108,7 @@ export async function uploadVideo(file: File, onProgress: (percent: number) => v
   let offset = 0;
   if (resumable) {
     try {
-      const res = await fetch(`${base}/upload/status?id=${encodeURIComponent(uploadId)}`, { cache: "no-store" });
+      const res = await fetch(`${sendBase}/upload/status?id=${encodeURIComponent(uploadId)}`, { cache: "no-store" });
       offset = Math.min(Number((await res.json()).received) || 0, file.size);
     } catch {
       offset = 0;
@@ -99,12 +124,13 @@ export async function uploadVideo(file: File, onProgress: (percent: number) => v
     /* ignore */
   }
 
+  const chunk = LOCAL_BASES.includes(sendBase) ? LOCAL_CHUNK : CHUNK;
   onProgress(Math.round((offset / file.size) * 100));
   for (;;) {
-    const slice = file.slice(offset, offset + CHUNK);
-    const isLast = offset + CHUNK >= file.size;
+    const slice = file.slice(offset, offset + chunk);
+    const isLast = offset + chunk >= file.size;
     const sent = offset;
-    const res = await sendChunk(base, file.name, uploadId, sent, isLast, slice, (loaded) =>
+    const res = await sendChunk(sendBase, file.name, uploadId, sent, isLast, slice, (loaded) =>
       onProgress(Math.min(100, Math.round(((sent + loaded) / file.size) * 100)))
     );
     offset += slice.size;

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { clearPending, readPending, uploadVideo, type Pending } from "@/lib/uploadVideo";
+import { clearPending, fastBase, readPending, serverBase, uploadVideo, type Pending } from "@/lib/uploadVideo";
+
+type DiskFile = { name: string; drive: string; size: string; url: string };
 
 /** Video picker used inside the film/episode forms: the file goes straight to
  *  the user's hard drive through their own server and fills in the URL, so no
@@ -25,6 +27,9 @@ export function VideoField({
   const [error, setError] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [showUrl, setShowUrl] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
+  const [diskFiles, setDiskFiles] = useState<DiskFile[] | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => setPending(readPending()), []);
 
@@ -56,6 +61,32 @@ export function VideoField({
     } finally {
       setUploading(false);
     }
+  }
+
+  /** Copier un film sur le disque avec l'explorateur va ~100x plus vite qu'un
+   *  envoi par Internet : on laisse donc choisir un fichier deja present. */
+  async function openDisk() {
+    setBrowsing(true);
+    setError("");
+    setDiskFiles(null);
+    try {
+      const base = await fastBase(await serverBase());
+      const res = await fetch(`${base}/api/files`, { cache: "no-store" });
+      if (!res.ok) throw new Error("Serveur injoignable");
+      const data = await res.json();
+      setDiskFiles(data.files || []);
+    } catch {
+      setError("Impossible de lire tes disques (le serveur est-il lancé ?).");
+      setBrowsing(false);
+    }
+  }
+
+  async function pickDisk(f: DiskFile) {
+    const base = await serverBase();
+    onChange(f.url.startsWith("http") ? f.url : `${base}${f.url}`);
+    onFileName?.(f.name.replace(/\.[^.]+$/, "").replace(/[._]+/g, " ").trim());
+    setBrowsing(false);
+    setError("");
   }
 
   return (
@@ -90,13 +121,61 @@ export function VideoField({
       )}
 
       {!uploading && (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
-        >
-          {value ? "Remplacer la vidéo" : pending ? "Reprendre l'envoi (même fichier)" : "Choisir une vidéo sur mon appareil"}
-        </button>
+        <div className="space-y-1.5">
+          <button
+            type="button"
+            onClick={openDisk}
+            className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            Choisir une vidéo déjà sur mon disque (instantané)
+          </button>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-xs font-medium text-gray-300 hover:bg-white/10 transition-colors"
+          >
+            {pending ? "Reprendre l'envoi (même fichier)" : "Envoyer une vidéo depuis cet appareil (lent)"}
+          </button>
+        </div>
+      )}
+
+      {browsing && (
+        <div className="rounded-lg border border-white/10 bg-black/40 p-2">
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher…"
+              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+            />
+            <button type="button" onClick={() => setBrowsing(false)} className="text-xs text-gray-400 hover:text-white">
+              Fermer
+            </button>
+          </div>
+          {!diskFiles && <p className="text-[11px] text-gray-400">Lecture de tes disques…</p>}
+          {diskFiles && diskFiles.length === 0 && (
+            <p className="text-[11px] text-gray-400">
+              Aucune vidéo trouvée. Copie tes films sur ton disque dur avec l&apos;explorateur, ils apparaîtront ici.
+            </p>
+          )}
+          <div className="max-h-56 space-y-1 overflow-y-auto">
+            {(diskFiles || [])
+              .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
+              .slice(0, 300)
+              .map((f) => (
+                <button
+                  key={f.url}
+                  type="button"
+                  onClick={() => pickDisk(f)}
+                  className="flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-[11px] text-gray-200 hover:bg-emerald-600/20"
+                >
+                  <span className="truncate">{f.name}</span>
+                  <span className="shrink-0 text-gray-500">{f.drive} · {f.size}</span>
+                </button>
+              ))}
+          </div>
+        </div>
       )}
 
       {uploading && (
