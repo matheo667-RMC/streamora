@@ -26,6 +26,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -171,6 +172,7 @@ class MediaHandler(BaseHTTPRequestHandler):
     # Quand la synchro est active, on copie le chemin /media/... : il reste
     # valable meme si l'adresse publique change.
     relative_links = False
+    tunnel = None
     server_version = "Streamora"
     sys_version = ""
 
@@ -226,11 +228,35 @@ class MediaHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         def run():
-            if urllib.parse.urlparse(self.path).path == "/upload":
+            path = urllib.parse.urlparse(self.path).path
+            if path == "/upload":
                 self._upload()
+            elif path == "/sync-key":
+                self._store_sync_key()
             else:
                 self.send_json(404, {"error": "Route inconnue"})
         self._guard(run)
+
+    def _store_sync_key(self):
+        """Streamora renvoie la cle une fois connecte : le serveur pourra ensuite
+        republier son adresse tout seul, sans jamais rouvrir le navigateur."""
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            key = (json.loads(self.rfile.read(length) or b"{}") or {}).get("key", "")
+        except (ValueError, TypeError):
+            key = ""
+        if not re.fullmatch(r"[A-Za-z0-9]{8,128}", key or ""):
+            self.send_json(400, {"error": "Cle invalide"})
+            return
+        config = load_config()
+        if config.get("sync_key") != key:
+            config["sync_key"] = key
+            save_config(config)
+            say("[OK] Streamora est connecte pour de bon : plus rien a faire,")
+            say("     meme quand le lien public change.\n")
+        if self.tunnel is not None:
+            self.tunnel.sync_key = key
+        self.send_json(200, {"ok": True})
 
     def _guard(self, fn):
         """Le navigateur coupe souvent la connexion (avance rapide, pause).
@@ -551,6 +577,7 @@ class Tunnel:
         self.site_url = site_url.rstrip("/")
         self.sync_key = sync_key
         self.url = None
+        self.proc = None
 
     def start(self):
         ssh = shutil.which("ssh")
@@ -603,11 +630,12 @@ class Tunnel:
             return
 
         self.url = None
+        self.proc = proc
         reader = threading.Thread(target=self._read, args=(proc, provider), daemon=True)
         reader.start()
 
         # Si aucun lien n'arrive, on ne reste pas bloque : on passe au suivant.
-        deadline = time.time() + 40
+        deadline = time.time() + 75
         while proc.poll() is None and (self.url or time.time() < deadline):
             time.sleep(1)
         if proc.poll() is None and not self.url:
@@ -622,6 +650,16 @@ class Tunnel:
         if self.url:
             say(f"[*] Lien {provider['name']} coupe, on en rouvre un...")
         self.url = None
+        self.proc = None
+
+    def restart(self):
+        """Coupe le tunnel courant : la boucle en rouvre un immediatement."""
+        proc = self.proc
+        if proc and proc.poll() is None:
+            try:
+                proc.terminate()
+            except OSError:
+                pass
 
     def _read(self, proc, provider):
         """Affiche tout ce que dit le service (sinon on ne sait pas ou ca coince)
@@ -676,11 +714,21 @@ class Tunnel:
             say("[!] Le lien repond mais pas comme prevu.\n")
             return
         say("[OK] Lien public verifie : il fonctionne.")
-        self._publish(url)
+        self.publish(url)
 
-    def _publish(self, url):
-        if not (self.site_url and self.sync_key):
-            say("    (Astuce : colle ta cle de synchro pour que Streamora se mette a jour tout seul.)\n")
+    def publish(self, url):
+        if not self.site_url:
+            return
+        if not self.sync_key:
+            # Pas de cle a recopier : on ouvre le site, deja connecte dans le
+            # navigateur, qui enregistre l'adresse lui-meme.
+            link = f"{self.site_url}/connect?u={urllib.parse.quote(url, safe='')}"
+            say("[*] Connexion de ton serveur a Streamora dans le navigateur...")
+            say("    " + link + "\n")
+            try:
+                webbrowser.open(link)
+            except Exception:  # noqa: BLE001
+                pass
             return
         body = json.dumps({"serverBaseUrl": url}).encode("utf-8")
         req = urllib.request.Request(
@@ -705,23 +753,9 @@ class Tunnel:
 
 # --------------------------------------------------------------------------
 def ask_sync_key(config):
-    """Une seule fois : la cle permet au serveur de publier son adresse tout seul,
-    donc l'utilisateur n'a plus jamais a recopier de lien dans Streamora."""
-    if config.get("sync_key"):
-        return config["sync_key"]
-    say("Colle ta CLE DE SYNCHRO Streamora pour que ton adresse se mette a jour")
-    say("toute seule (Admin > Adresse de mon serveur > Copier).")
-    try:
-        key = input("  Cle (ou juste Entree pour ignorer) : ").strip()
-    except (EOFError, OSError):
-        return ""
-    if key:
-        config["sync_key"] = key
-        save_config(config)
-        say("  -> Cle enregistree. Tu n'auras plus a la remettre.\n")
-    else:
-        say("  -> Ignoree. Tu devras coller l'adresse a la main dans Streamora.\n")
-    return key
+    """Plus rien a taper : la cle n'est utilisee que si elle a deja ete
+    enregistree, sinon le serveur se connecte via le navigateur."""
+    return config.get("sync_key", "")
 
 
 def install_autostart():
@@ -748,6 +782,110 @@ def install_autostart():
     except OSError:
         return ""
     return launcher
+
+
+class MrRobot:
+    """Le gardien du serveur : il verifie en boucle que tout marche (serveur,
+    lien public, disques, envois en cours) et repare ce qui casse, pour que
+    personne n'ait a surveiller la fenetre."""
+
+    def __init__(self, port, tunnel, site_url):
+        self.port = port
+        self.tunnel = tunnel
+        self.site_url = site_url.rstrip("/")
+        self.last_url = None
+        self.bad_link = 0
+
+    def start(self):
+        threading.Thread(target=self._loop, daemon=True).start()
+
+    def _log(self, text):
+        say(f"[Mr. Robot] {text}")
+
+    def _loop(self):
+        self._log("en service : je surveille ton serveur et je repare tout seul.")
+        while True:
+            time.sleep(30)
+            try:
+                self._check_local()
+                self._check_drives()
+                self._check_link()
+                self._clean_parts()
+            except Exception as exc:  # noqa: BLE001
+                self._log(f"souci pendant la verification ({exc}), je reessaie.")
+
+    def _check_local(self):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/api/ping", timeout=10) as resp:
+                if resp.status != 200:
+                    self._log(f"le serveur repond {resp.status} : je surveille.")
+        except Exception:  # noqa: BLE001
+            self._log("le serveur ne repond pas sur ce PC : verifie qu'aucun antivirus ne le bloque.")
+
+    def _check_drives(self):
+        for i, d in enumerate(MediaHandler.media_dirs):
+            if not os.path.isdir(d["path"]):
+                self._log(f"disque {i} ({d['path']}) debranche : rebranche-le, "
+                          "je le remets en service tout seul.")
+
+    def _check_link(self):
+        url = self.tunnel.url if self.tunnel else None
+        if not url:
+            return
+        try:
+            req = urllib.request.Request(url + "/api/ping", headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                ok = resp.status == 200
+        except Exception:  # noqa: BLE001
+            ok = False
+
+        if not ok:
+            self.bad_link += 1
+            # Une coupure passagere ne merite pas de couper le lien : on n'agit
+            # qu'apres deux echecs d'affilee.
+            if self.bad_link >= 2:
+                self._log("le lien public ne repond plus : j'en rouvre un.")
+                self.tunnel.restart()
+                self.bad_link = 0
+            return
+
+        self.bad_link = 0
+        if url != self.last_url:
+            self.last_url = url
+            self._republish(url)
+
+    def _republish(self, url):
+        """Le site doit toujours connaitre l'adresse courante, sinon les videos
+        deviennent injoignables des que le lien change."""
+        if not (self.site_url and self.tunnel.sync_key):
+            return
+        try:
+            with urllib.request.urlopen(self.site_url + "/api/server-url", timeout=20) as resp:
+                known = (json.loads(resp.read() or b"{}") or {}).get("serverBaseUrl", "")
+        except Exception:  # noqa: BLE001
+            known = ""
+        if known.rstrip("/") != url.rstrip("/"):
+            self._log("nouvelle adresse : je la renvoie a Streamora.")
+            self.tunnel.publish(url)
+
+    def _clean_parts(self):
+        """Un envoi abandonne depuis une semaine ne sera jamais repris : on
+        recupere la place au lieu de laisser trainer des fichiers caches."""
+        if not MediaHandler.media_dirs:
+            return
+        updir = os.path.join(MediaHandler.media_dirs[0]["path"], UPLOAD_DIRNAME)
+        if not os.path.isdir(updir):
+            return
+        for name in os.listdir(updir):
+            if not name.startswith(".part-"):
+                continue
+            path = os.path.join(updir, name)
+            try:
+                if time.time() - os.path.getmtime(path) > 7 * 86400:
+                    os.remove(path)
+                    self._log(f"envoi abandonne depuis 7 jours supprime ({name}).")
+            except OSError:
+                pass
 
 
 def watch_drives(interval=15):
@@ -789,7 +927,9 @@ def main():
     say("   Ctrl+C pour arreter")
     say("=" * 62 + "\n")
 
-    MediaHandler.relative_links = bool(sync_key)
+    # Le site connait l'adresse du serveur : les chemins /media/... restent
+    # valables meme quand le lien public change.
+    MediaHandler.relative_links = True
 
     if config.get("autostart", True):
         launcher = install_autostart()
@@ -801,7 +941,10 @@ def main():
     threading.Thread(target=watch_drives, daemon=True).start()
 
     if config.get("public_tunnel", True):
-        Tunnel(port, config.get("site_url", SITE_URL), sync_key).start()
+        tunnel = Tunnel(port, config.get("site_url", SITE_URL), sync_key)
+        MediaHandler.tunnel = tunnel
+        tunnel.start()
+        MrRobot(port, tunnel, config.get("site_url", SITE_URL)).start()
 
     try:
         httpd.serve_forever()
