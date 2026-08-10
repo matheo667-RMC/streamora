@@ -724,6 +724,46 @@ def ask_sync_key(config):
     return key
 
 
+def install_autostart():
+    """Le serveur doit repartir tout seul apres un redemarrage du PC, sinon les
+    videos deviennent injoignables sans que personne s'en rende compte."""
+    if os.name != "nt":
+        return ""
+    startup = os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows",
+                           "Start Menu", "Programs", "Startup")
+    if not os.path.isdir(startup):
+        return ""
+    launcher = os.path.join(startup, "Streamora.cmd")
+    script = os.path.abspath(__file__)
+    content = (
+        "@echo off\r\n"
+        f'cd /d "{os.path.dirname(script)}"\r\n'
+        f'python "{script}"\r\n'
+        "pause\r\n"
+    )
+    try:
+        if not os.path.exists(launcher) or open(launcher, encoding="utf-8").read() != content:
+            with open(launcher, "w", encoding="utf-8") as f:
+                f.write(content)
+    except OSError:
+        return ""
+    return launcher
+
+
+def watch_drives(interval=15):
+    """Une cle USB branchee apres le demarrage doit apparaitre sans relancer le
+    serveur ; les disques deja listes gardent leur numero pour ne pas casser les
+    liens deja colles dans Streamora."""
+    while True:
+        time.sleep(interval)
+        known = {os.path.normcase(os.path.abspath(d["path"])) for d in MediaHandler.media_dirs}
+        for d in detect_drives():
+            if os.path.normcase(os.path.abspath(d["path"])) not in known:
+                MediaHandler.media_dirs.append(d)
+                say(f"[+] Nouveau disque detecte : {d['path']} "
+                    f"(Disque {len(MediaHandler.media_dirs) - 1})")
+
+
 def main():
     config = load_config()
     port = int(config.get("port", DEFAULT_PORT))
@@ -750,6 +790,15 @@ def main():
     say("=" * 62 + "\n")
 
     MediaHandler.relative_links = bool(sync_key)
+
+    if config.get("autostart", True):
+        launcher = install_autostart()
+        if launcher:
+            say("[OK] Demarrage automatique installe : le serveur repartira tout")
+            say("     seul a chaque allumage du PC.")
+            say(f"     (pour l'enlever, supprime {launcher})\n")
+
+    threading.Thread(target=watch_drives, daemon=True).start()
 
     if config.get("public_tunnel", True):
         Tunnel(port, config.get("site_url", SITE_URL), sync_key).start()

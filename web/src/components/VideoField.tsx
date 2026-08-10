@@ -10,11 +10,13 @@ export function VideoField({
   value,
   onChange,
   onBlur,
+  onFileName,
   label = "Vidéo",
 }: {
   value: string;
   onChange: (url: string) => void;
   onBlur?: () => void;
+  onFileName?: (name: string) => void;
   label?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +46,7 @@ export function VideoField({
       const url = await uploadVideo(file, setProgress);
       setPending(null);
       onChange(url);
+      onFileName?.(file.name.replace(/\.[^.]+$/, "").replace(/[._]+/g, " ").trim());
       onBlur?.();
     } catch (err) {
       setPending(readPending());

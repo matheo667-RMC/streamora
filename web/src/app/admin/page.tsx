@@ -602,7 +602,7 @@ export default function AdminPage() {
               <Field label="Annee" value={String(filmForm.year)} onChange={v => setFilmForm({ ...filmForm, year: Number(v) || new Date().getFullYear() })} />
             </div>
             <Field label="Duree (ex: 1h30)" value={filmForm.duration} onChange={v => setFilmForm({ ...filmForm, duration: v })} />
-            <VideoField label="Vidéo du film (elle part sur ton disque dur)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} onBlur={() => fillFilmDuration(filmForm.videoUrl, filmForm.duration)} />
+            <VideoField label="Vidéo du film (elle part sur ton disque dur)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} onFileName={n => setFilmForm(f => (f.title.trim() ? f : { ...f, title: n }))} onBlur={() => fillFilmDuration(filmForm.videoUrl, filmForm.duration)} />
             <div className="space-y-1">
               <label className="text-xs text-gray-400">Affiche du film</label>
               <div className="flex gap-2">
@@ -735,7 +735,7 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
-              <VideoField label="Vidéo de l'épisode (elle part sur ton disque dur)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} onBlur={() => fillEpisodeDuration(episodeForm.videoUrl, episodeForm.duration)} />
+              <VideoField label="Vidéo de l'épisode (elle part sur ton disque dur)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} onFileName={n => setEpisodeForm(f => (f.title.trim() ? f : { ...f, title: n }))} onBlur={() => fillEpisodeDuration(episodeForm.videoUrl, episodeForm.duration)} />
               <button onClick={addEpisode} disabled={saving || !episodeForm.videoUrl.trim()} className="w-full btn-primary py-2.5 mt-3">
                 {saving ? "Ajout en cours..." : "Ajouter l'episode"}
               </button>
