@@ -67,13 +67,15 @@ def save_config(config):
         print(f"[!] Impossible d'enregistrer config.json : {exc}")
 
 
-def detect_drives():
-    """Tous les disques branches, sauf C: (systeme). Detecte a chaque lancement,
-    donc un disque/cle branche juste avant est pris en compte automatiquement."""
+def detect_drives(skip=()):
+    """Tous les disques branches, sauf C: (systeme) et ceux exclus. Detecte a
+    chaque lancement, donc un disque/cle branche juste avant est pris en compte
+    automatiquement."""
     drives = []
+    ignored = {"C"} | {s.strip(":\\/").upper() for s in skip if s}
     if os.name == "nt":
         for letter in string.ascii_uppercase:
-            if letter == "C":
+            if letter in ignored:
                 continue
             path = f"{letter}:\\"
             if os.path.isdir(path):
@@ -93,7 +95,7 @@ def get_media_dirs(config):
         seen.add(key)
         dirs.append({"label": label, "path": path})
 
-    for d in detect_drives():
+    for d in detect_drives(config.get("skip_drives") or []):
         add(d["label"], d["path"])
 
     for d in config.get("media_dirs") or []:
@@ -161,6 +163,31 @@ def parse_range(header, size):
     if start >= size:
         return None
     return start, min(end, size - 1)
+
+
+def list_media_files():
+    """Toutes les videos des disques partages, avec leur chemin /media/... ."""
+    out = []
+    for idx, drive in enumerate(MediaHandler.media_dirs):
+        base = drive["path"]
+        for root, subdirs, files in os.walk(base):
+            subdirs[:] = [d for d in subdirs if d.lower() not in SKIP_DIRS and not d.startswith("$")]
+            for fname in sorted(files):
+                if os.path.splitext(fname)[1].lower() not in ALLOWED_EXT:
+                    continue
+                full = os.path.join(root, fname)
+                try:
+                    size = os.path.getsize(full)
+                except OSError:
+                    continue
+                rel = os.path.relpath(full, base).replace("\\", "/")
+                out.append({
+                    "name": fname,
+                    "drive": drive["label"],
+                    "size": human_size(size),
+                    "url": f"/media/{idx}/" + urllib.parse.quote(rel),
+                })
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -291,32 +318,8 @@ class MediaHandler(BaseHTTPRequestHandler):
             self.send_text(404, "Introuvable")
 
     # ---- listing ---------------------------------------------------------
-    def _walk(self):
-        for idx, drive in enumerate(self.media_dirs):
-            base = drive["path"]
-            for root, subdirs, files in os.walk(base):
-                subdirs[:] = [d for d in subdirs if d.lower() not in SKIP_DIRS and not d.startswith("$")]
-                for fname in sorted(files):
-                    if os.path.splitext(fname)[1].lower() not in ALLOWED_EXT:
-                        continue
-                    full = os.path.join(root, fname)
-                    try:
-                        size = os.path.getsize(full)
-                    except OSError:
-                        continue
-                    rel = os.path.relpath(full, base).replace("\\", "/")
-                    yield idx, rel, fname, size
-
     def _file_list(self):
-        out = []
-        for idx, rel, fname, size in self._walk():
-            out.append({
-                "name": fname,
-                "drive": self.media_dirs[idx]["label"],
-                "size": human_size(size),
-                "url": f"/media/{idx}/" + urllib.parse.quote(rel),
-            })
-        return out
+        return list_media_files()
 
     def _index_html(self):
         rows = []
@@ -807,6 +810,7 @@ class MrRobot:
         self.site_url = site_url.rstrip("/")
         self.last_url = None
         self.bad_link = 0
+        self.sent_files = set()
 
     def start(self):
         threading.Thread(target=self._loop, daemon=True).start()
@@ -823,6 +827,7 @@ class MrRobot:
                 self._check_drives()
                 self._check_link()
                 self._clean_parts()
+                self._import_new()
             except Exception as exc:  # noqa: BLE001
                 self._log(f"souci pendant la verification ({exc}), je reessaie.")
 
@@ -885,6 +890,31 @@ class MrRobot:
             self._log("nouvelle adresse : je la renvoie a Streamora.")
             self.tunnel.publish(url)
 
+    def _import_new(self):
+        """Un film copie sur le disque doit apparaitre sur le site sans que
+        personne ne remplisse un formulaire : on envoie la liste au site, qui
+        retrouve titre, annee, resume et affiche tout seul."""
+        key = self.tunnel.sync_key if self.tunnel else ""
+        if not (self.site_url and key):
+            return
+        files = [f for f in list_media_files() if f["url"] not in self.sent_files]
+        if not files:
+            return
+        payload = json.dumps({"files": [{"name": f["name"], "url": f["url"]} for f in files]}).encode("utf-8")
+        req = urllib.request.Request(self.site_url + "/api/admin/import-disk", data=payload,
+                                     headers={"Content-Type": "application/json", "X-Sync-Key": key})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                data = json.loads(resp.read() or b"{}")
+        except Exception as exc:  # noqa: BLE001
+            self._log(f"import impossible pour l'instant ({exc}), je reessaie.")
+            return
+        self.sent_files.update(f["url"] for f in files)
+        added = int(data.get("films", 0)) + int(data.get("episodes", 0))
+        if added:
+            self._log(f"{data.get('films', 0)} film(s) et {data.get('episodes', 0)} episode(s) "
+                      "ajoutes au site avec affiche, annee et resume.")
+
     def _clean_parts(self):
         """Un envoi abandonne depuis une semaine ne sera jamais repris : on
         recupere la place au lieu de laisser trainer des fichiers caches."""
@@ -912,7 +942,7 @@ def watch_drives(interval=15):
     while True:
         time.sleep(interval)
         known = {os.path.normcase(os.path.abspath(d["path"])) for d in MediaHandler.media_dirs}
-        for d in detect_drives():
+        for d in detect_drives(load_config().get("skip_drives") or []):
             if os.path.normcase(os.path.abspath(d["path"])) not in known:
                 MediaHandler.media_dirs.append(d)
                 say(f"[+] Nouveau disque detecte : {d['path']} "

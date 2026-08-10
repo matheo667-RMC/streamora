@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { VideoUploader } from "@/components/VideoUploader";
 import { VideoField } from "@/components/VideoField";
+import { DiskImport } from "@/components/DiskImport";
 import { ServerUrlSetting } from "@/components/ServerUrlSetting";
 
 const LINKS_KEY = "streamora-generated-links";
@@ -500,6 +501,8 @@ export default function AdminPage() {
 
               {/* Server base URL (for /media/... links from the PC server) */}
               <ServerUrlSetting />
+
+              <DiskImport />
 
               {/* Upload video -> public link (stored on the user's hard drive) */}
               <VideoUploader onUploaded={(u, name) => saveLinks([{ fileName: name || "Vidéo uploadée", url: u, size: new Date().toLocaleDateString("fr-FR") }, ...convertedUrls])} />
