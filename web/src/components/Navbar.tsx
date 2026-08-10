@@ -105,7 +105,7 @@ export function Navbar() {
                 className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-300 hover:text-white transition-colors"
               >
                 <div className="h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-xs font-bold ring-2 ring-transparent hover:ring-emerald-500/50 transition-all">
-                  {profile.avatar.startsWith("data:") || profile.avatar.startsWith("http") ? (
+                  {profile.avatar.startsWith("data:") || profile.avatar.startsWith("http") || profile.avatar.startsWith("/") ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={profile.avatar} alt={profile.name || "profil"} className="h-full w-full object-cover" />
                   ) : profile.avatar.startsWith("e:") ? (

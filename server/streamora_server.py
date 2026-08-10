@@ -46,6 +46,8 @@ SKIP_DIRS = {
     "recovery", "msocache", "appdata", "node_modules",
 }
 
+DEFAULT_SKIP_DRIVES = ["G"]
+
 
 # --------------------------------------------------------------------------
 # Configuration / disques
@@ -54,9 +56,13 @@ def load_config():
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data if isinstance(data, dict) else {}
+            config = data if isinstance(data, dict) else {}
     except (OSError, ValueError):
-        return {}
+        config = {}
+    # G: est une cle de sauvegarde Mac, pas un disque du serveur : on l'ignore
+    # tant que le fichier de config ne dit pas le contraire.
+    config.setdefault("skip_drives", DEFAULT_SKIP_DRIVES)
+    return config
 
 
 def save_config(config):
@@ -177,14 +183,15 @@ def list_media_files():
                     continue
                 full = os.path.join(root, fname)
                 try:
-                    size = os.path.getsize(full)
+                    stat = os.stat(full)
                 except OSError:
                     continue
                 rel = os.path.relpath(full, base).replace("\\", "/")
                 out.append({
                     "name": fname,
                     "drive": drive["label"],
-                    "size": human_size(size),
+                    "size": human_size(stat.st_size),
+                    "modified": stat.st_mtime,
                     "url": f"/media/{idx}/" + urllib.parse.quote(rel),
                 })
     return out
@@ -881,14 +888,8 @@ class MrRobot:
         deviennent injoignables des que le lien change."""
         if not (self.site_url and self.tunnel.sync_key):
             return
-        try:
-            with urllib.request.urlopen(self.site_url + "/api/server-url", timeout=20) as resp:
-                known = (json.loads(resp.read() or b"{}") or {}).get("serverBaseUrl", "")
-        except Exception:  # noqa: BLE001
-            known = ""
-        if known.rstrip("/") != url.rstrip("/"):
-            self._log("nouvelle adresse : je la renvoie a Streamora.")
-            self.tunnel.publish(url)
+        self._log("nouvelle adresse : je la renvoie a Streamora.")
+        self.tunnel.publish(url)
 
     def _import_new(self):
         """Un film copie sur le disque doit apparaitre sur le site sans que
@@ -897,9 +898,19 @@ class MrRobot:
         key = self.tunnel.sync_key if self.tunnel else ""
         if not (self.site_url and key):
             return
-        files = [f for f in list_media_files() if f["url"] not in self.sent_files]
+        # Un fichier encore en cours de copie grossit : on attend qu'il ne
+        # bouge plus avant de l'annoncer, sinon le site publie une video coupee.
+        now = time.time()
+        files = [
+            f for f in list_media_files()
+            if f["url"] not in self.sent_files and now - f["modified"] > 60
+        ]
         if not files:
             return
+        # Par petits paquets : le site cherche l'affiche et le resume de chaque
+        # titre, et une requete trop longue serait coupee. Les films arrivent
+        # donc au fur et a mesure, sans attendre la fin de la copie complete.
+        files = files[:12]
         payload = json.dumps({"files": [{"name": f["name"], "url": f["url"]} for f in files]}).encode("utf-8")
         req = urllib.request.Request(self.site_url + "/api/admin/import-disk", data=payload,
                                      headers={"Content-Type": "application/json", "X-Sync-Key": key})
@@ -987,11 +998,13 @@ def main():
 
     threading.Thread(target=watch_drives, daemon=True).start()
 
+    tunnel = Tunnel(port, config.get("site_url", SITE_URL), sync_key)
+    MediaHandler.tunnel = tunnel
     if config.get("public_tunnel", True):
-        tunnel = Tunnel(port, config.get("site_url", SITE_URL), sync_key)
-        MediaHandler.tunnel = tunnel
         tunnel.start()
-        MrRobot(port, tunnel, config.get("site_url", SITE_URL)).start()
+    # Mr. Robot tourne meme sans lien public : c'est lui qui ajoute au site les
+    # films poses sur les disques.
+    MrRobot(port, tunnel, config.get("site_url", SITE_URL)).start()
 
     try:
         httpd.serve_forever()

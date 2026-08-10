@@ -22,17 +22,17 @@ export function DiskImport() {
       let episodes = 0;
       // Par paquets : une grosse bibliotheque depasserait le temps max d'une
       // requete, et on voit la progression avancer.
-      for (let i = 0; i < files.length; i += 20) {
+      for (let i = 0; i < files.length; i += 12) {
         const res = await fetch("/api/admin/import-disk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ files: files.slice(i, i + 20) }),
+          body: JSON.stringify({ files: files.slice(i, i + 12) }),
         });
         if (!res.ok) throw new Error("Le site a refusé l'import.");
         const data = await res.json();
         films += data.films || 0;
         episodes += data.episodes || 0;
-        setMessage(`${Math.min(i + 20, files.length)}/${files.length} — ${films} film(s), ${episodes} épisode(s) ajoutés…`);
+        setMessage(`${Math.min(i + 12, files.length)}/${files.length} — ${films} film(s), ${episodes} épisode(s) ajoutés…`);
       }
       setMessage(`Terminé : ${films} film(s) et ${episodes} épisode(s) ajoutés avec affiche, année et résumé.`);
     } catch (err) {

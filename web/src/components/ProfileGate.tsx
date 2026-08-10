@@ -9,11 +9,12 @@ interface Profile {
   avatarUrl: string;
 }
 
-const EMOJI_AVATARS = [
-  "e:🦊", "e:🐼", "e:🐯", "e:🦁", "e:🐸", "e:🐵",
-  "e:🐨", "e:🐷", "e:🐮", "e:🐰", "e:🦄", "e:🐙",
-  "e:👾", "e:🤖", "e:👻", "e:🎃", "e:😎", "e:🥷",
-  "e:🦖", "e:🐲", "e:⚡", "e:🔥", "e:🌟", "e:🎮",
+export const DEFAULT_AVATARS = [
+  "/avatars/bleu.png",
+  "/avatars/rose.png",
+  "/avatars/violet.png",
+  "/avatars/jaune.png",
+  "/avatars/rouge.png",
 ];
 
 const EMOJI_BG = [
@@ -38,7 +39,7 @@ function Avatar({ avatarUrl, name, className }: { avatarUrl: string; name: strin
       </div>
     );
   }
-  if (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:")) {
+  if (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:") || avatarUrl.startsWith("/")) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={avatarUrl} alt={name} className={`object-cover ${className || ""}`} />;
   }
@@ -231,7 +232,7 @@ function ProfileEditor({
   onSaved: () => void;
 }) {
   const [name, setName] = useState(profile?.name || "");
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || EMOJI_AVATARS[0]);
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || DEFAULT_AVATARS[0]);
   const [posters, setPosters] = useState<{ title: string; url: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -323,15 +324,15 @@ function ProfileEditor({
         />
 
         <div className="w-full">
-          <p className="text-sm text-gray-400 mb-2">Avatar émoji</p>
-          <div className="grid grid-cols-8 gap-2">
-            {EMOJI_AVATARS.map((e) => (
+          <p className="text-sm text-gray-400 mb-2">Photo de profil</p>
+          <div className="grid grid-cols-5 gap-2 sm:gap-3">
+            {DEFAULT_AVATARS.map((a) => (
               <button
-                key={e}
-                onClick={() => setAvatarUrl(e)}
-                className={`aspect-square rounded-md overflow-hidden ring-2 ${avatarUrl === e ? "ring-emerald-500" : "ring-transparent hover:ring-white/40"}`}
+                key={a}
+                onClick={() => setAvatarUrl(a)}
+                className={`aspect-square rounded-xl overflow-hidden ring-2 ${avatarUrl === a ? "ring-emerald-500" : "ring-transparent hover:ring-white/40"}`}
               >
-                <Avatar avatarUrl={e} name="" className="w-full h-full text-lg" />
+                <Avatar avatarUrl={a} name="" className="w-full h-full" />
               </button>
             ))}
           </div>

@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { DEFAULT_AVATARS } from "@/components/ProfileGate";
 
 interface Sub {
   hasAccess: boolean; founder: boolean; planLabel: string;
   planExpiresAt: string | null; badges: string[]; watchSeconds: number; image: string | null;
 }
 
-const PRESET_AVATARS = ["🎬", "🍿", "🦸", "👾", "🐱", "🐉", "🚀", "🎮", "👑", "🎧", "🌙", "⚡"];
 interface Item { id: string; status: string; mediaType: string; mediaId: string; title: string; posterUrl: string }
 
 function fmtTime(sec: number) {
@@ -83,26 +83,26 @@ export function AccountExtras() {
         <h2 className="text-lg font-semibold mb-4">Mon avatar</h2>
         <div className="flex items-center gap-4 mb-4">
           <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-600 to-green-600 flex items-center justify-center text-3xl overflow-hidden ring-2 ring-emerald-500/30">
-            {currentAvatar.startsWith("http") ? (
+            {currentAvatar.startsWith("http") || currentAvatar.startsWith("/") ? (
               <Image src={currentAvatar} alt="avatar" width={64} height={64} className="object-cover h-full w-full" />
             ) : currentAvatar ? (
               <span>{currentAvatar}</span>
             ) : (
-              <span>🎬</span>
+              <Image src={DEFAULT_AVATARS[0]} alt="avatar" width={64} height={64} className="object-cover h-full w-full" />
             )}
           </div>
           <p className="text-sm text-gray-400">Choisis un avatar :</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {PRESET_AVATARS.map((a) => (
+        <div className="flex flex-wrap gap-3">
+          {DEFAULT_AVATARS.map((a) => (
             <button
               key={a}
               onClick={() => setAvatar(a)}
-              className={`h-11 w-11 rounded-full text-xl flex items-center justify-center transition-all ${
-                currentAvatar === a ? "bg-gradient-to-br from-emerald-600 to-green-600 scale-110" : "bg-white/10 hover:bg-white/20"
+              className={`h-14 w-14 overflow-hidden rounded-full transition-all ring-2 ${
+                currentAvatar === a ? "ring-emerald-500 scale-110" : "ring-white/10 hover:ring-emerald-400/60"
               }`}
             >
-              {a}
+              <Image src={a} alt="avatar" width={56} height={56} className="object-cover h-full w-full" />
             </button>
           ))}
         </div>
