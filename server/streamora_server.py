@@ -173,6 +173,9 @@ class MediaHandler(BaseHTTPRequestHandler):
     # valable meme si l'adresse publique change.
     relative_links = False
     tunnel = None
+    # Horodatage du dernier octet recu/envoye : sert a ne pas couper le lien
+    # public pendant qu'une video passe.
+    last_activity = 0.0
     server_version = "Streamora"
     sys_version = ""
 
@@ -352,6 +355,7 @@ class MediaHandler(BaseHTTPRequestHandler):
         return full if os.path.isfile(full) else None
 
     def _serve_media(self, path, head_only):
+        MediaHandler.last_activity = time.time()
         full = self._resolve(path)
         if not full:
             self.send_text(404, "Fichier introuvable")
@@ -417,6 +421,7 @@ class MediaHandler(BaseHTTPRequestHandler):
         """Recoit UN morceau de video et l'ajoute au fichier sur le disque.
         Les liens publics limitent la taille d'une requete : le navigateur
         envoie donc la video en petits morceaux."""
+        MediaHandler.last_activity = time.time()
         if not self.media_dirs:
             self.send_json(500, {"error": "Aucun disque disponible"})
             return
@@ -578,6 +583,7 @@ class Tunnel:
         self.sync_key = sync_key
         self.url = None
         self.proc = None
+        self.best = ""
 
     def start(self):
         ssh = shutil.which("ssh")
@@ -592,6 +598,11 @@ class Tunnel:
         while True:
             try:
                 usable = [p for p in PROVIDERS if reachable(p["host"], p["port"])]
+                # Un service qui a deja marche passe en premier : sinon chaque
+                # reconnexion recommence par un service muet et coupe les videos
+                # une minute pour rien.
+                if self.best:
+                    usable.sort(key=lambda p: p["name"] != self.best)
                 if not usable:
                     say("[!] Aucun service de lien public joignable (internet coupe ?).")
                     say("    Nouvelle tentative dans 15 secondes...")
@@ -680,6 +691,7 @@ class Tunnel:
                 # Certains services annoncent plusieurs adresses : on garde la 1re.
                 if self.url is None:
                     self.url = m.group(0)
+                    self.best = provider["name"]
                     self._announce(provider)
                 continue
             if not NOISE_RE.match(line):
@@ -832,18 +844,23 @@ class MrRobot:
         url = self.tunnel.url if self.tunnel else None
         if not url:
             return
+        # Une video en cours de lecture ou d'envoi prouve que le lien marche, et
+        # la couper ferait plus de mal que de bien.
+        if time.time() - MediaHandler.last_activity < 60:
+            self.bad_link = 0
+            return
         try:
             req = urllib.request.Request(url + "/api/ping", headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=20) as resp:
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 ok = resp.status == 200
         except Exception:  # noqa: BLE001
             ok = False
 
         if not ok:
             self.bad_link += 1
-            # Une coupure passagere ne merite pas de couper le lien : on n'agit
-            # qu'apres deux echecs d'affilee.
-            if self.bad_link >= 2:
+            # Une coupure passagere ne merite pas de rouvrir le lien : on n'agit
+            # qu'apres trois echecs d'affilee.
+            if self.bad_link >= 3:
                 self._log("le lien public ne repond plus : j'en rouvre un.")
                 self.tunnel.restart()
                 self.bad_link = 0
