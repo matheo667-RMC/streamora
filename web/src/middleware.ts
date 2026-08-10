@@ -19,6 +19,7 @@ export async function middleware(request: NextRequest) {
     pathname === "/sw.js" ||
     pathname.startsWith("/logo") ||
     pathname.startsWith("/icon-") ||
+    pathname.startsWith("/avatars/") ||
     pathname === "/apple-touch-icon.png" ||
     pathname.startsWith("/uploads/")
   ) {
