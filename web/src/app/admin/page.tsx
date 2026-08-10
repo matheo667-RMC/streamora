@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { VideoUploader } from "@/components/VideoUploader";
+import { VideoField } from "@/components/VideoField";
 import { ServerUrlSetting } from "@/components/ServerUrlSetting";
 
+const LINKS_KEY = "streamora-generated-links";
 const ADMIN_EMAIL = "max350457@gmail.com";
 const ADMIN_PASSWORD = "2017";
 
@@ -52,7 +54,7 @@ export default function AdminPage() {
   const [pinError, setPinError] = useState("");
   const [tab, setTab] = useState<"dashboard" | "films" | "series" | "users" | "convert">("dashboard");
 
-  // Video converter
+  // Video converter: generated links are kept so they survive a page close
   const [convertedUrls, setConvertedUrls] = useState<{ fileName: string; url: string; size: string }[]>([]);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<Record<string, number>>({});
@@ -82,6 +84,20 @@ export default function AdminPage() {
   const [posterSearching, setPosterSearching] = useState(false);
   const [posterTarget, setPosterTarget] = useState<"film" | "series">("film");
   const [episodeInfoLoading, setEpisodeInfoLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LINKS_KEY);
+      if (raw) setConvertedUrls(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+
+  function saveLinks(list: { fileName: string; url: string; size: string }[]) {
+    setConvertedUrls(list);
+    try {
+      localStorage.setItem(LINKS_KEY, JSON.stringify(list));
+    } catch { /* ignore */ }
+  }
 
   async function searchPoster(title: string, type: "film" | "series") {
     if (!title.trim()) return;
@@ -486,7 +502,7 @@ export default function AdminPage() {
               <ServerUrlSetting />
 
               {/* Upload video -> public link (stored on the user's hard drive) */}
-              <VideoUploader onUploaded={(u) => setConvertedUrls(prev => [{ fileName: "Vidéo uploadée", url: u, size: "Lien public" }, ...prev])} />
+              <VideoUploader onUploaded={(u, name) => saveLinks([{ fileName: name || "Vidéo uploadée", url: u, size: new Date().toLocaleDateString("fr-FR") }, ...convertedUrls])} />
 
               {/* Results */}
               {convertedUrls.length > 0 && (
@@ -495,7 +511,8 @@ export default function AdminPage() {
                     <svg className="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-5.561a4.5 4.5 0 00-6.364 6.364L7.5 15.75" />
                     </svg>
-                    Liens generes
+                    Liens enregistres
+                    <span className="font-normal text-gray-500">— gardes meme si tu fermes la page</span>
                   </h3>
                   {convertedUrls.map((r, i) => (
                     <div key={i} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
@@ -516,6 +533,12 @@ export default function AdminPage() {
                               className={`shrink-0 rounded-lg px-4 py-2 text-xs font-medium transition-all ${copiedUrl === r.url ? "bg-green-600 text-white" : "bg-emerald-600 text-white hover:bg-emerald-500"}`}
                             >
                               {copiedUrl === r.url ? "Copie !" : "Copier"}
+                            </button>
+                            <button
+                              onClick={() => saveLinks(convertedUrls.filter((x) => x.url !== r.url))}
+                              className="shrink-0 rounded-lg px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/10"
+                            >
+                              Retirer
                             </button>
                           </div>
                         </div>
@@ -579,7 +602,7 @@ export default function AdminPage() {
               <Field label="Annee" value={String(filmForm.year)} onChange={v => setFilmForm({ ...filmForm, year: Number(v) || new Date().getFullYear() })} />
             </div>
             <Field label="Duree (ex: 1h30)" value={filmForm.duration} onChange={v => setFilmForm({ ...filmForm, duration: v })} />
-            <Field label="URL Video (colle n'importe quel lien : ton serveur, .mp4, embed, Google Drive...)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} placeholder="https://... (n'importe quel lien video)" onBlur={() => fillFilmDuration(filmForm.videoUrl, filmForm.duration)} />
+            <VideoField label="Vidéo du film (elle part sur ton disque dur)" value={filmForm.videoUrl} onChange={v => setFilmForm({ ...filmForm, videoUrl: v })} onBlur={() => fillFilmDuration(filmForm.videoUrl, filmForm.duration)} />
             <div className="space-y-1">
               <label className="text-xs text-gray-400">Affiche du film</label>
               <div className="flex gap-2">
@@ -712,7 +735,7 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
-              <Field label="URL Video (colle n'importe quel lien : ton serveur, .mp4, embed, Google Drive...)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} placeholder="https://... (n'importe quel lien video)" onBlur={() => fillEpisodeDuration(episodeForm.videoUrl, episodeForm.duration)} />
+              <VideoField label="Vidéo de l'épisode (elle part sur ton disque dur)" value={episodeForm.videoUrl} onChange={v => setEpisodeForm({ ...episodeForm, videoUrl: v })} onBlur={() => fillEpisodeDuration(episodeForm.videoUrl, episodeForm.duration)} />
               <button onClick={addEpisode} disabled={saving || !episodeForm.videoUrl.trim()} className="w-full btn-primary py-2.5 mt-3">
                 {saving ? "Ajout en cours..." : "Ajouter l'episode"}
               </button>

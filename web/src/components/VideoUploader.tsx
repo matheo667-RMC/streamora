@@ -1,97 +1,48 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { clearPending, readPending, uploadVideo, type Pending } from "@/lib/uploadVideo";
 
-export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => void }) {
+export function VideoUploader({ onUploaded }: { onUploaded?: (url: string, name: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+
+  useEffect(() => setPending(readPending()), []);
+
+  // Closing the page stops the upload: warn, then offer to resume it later.
+  useEffect(() => {
+    if (!uploading) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [uploading]);
 
   async function handleFile(file: File) {
     setError("");
     setUrl("");
     setProgress(0);
-
-    // The file is stored on the user's own hard drive, through their PC server.
-    let base = "";
-    try {
-      const res = await fetch("/api/server-url", { cache: "no-store" });
-      base = ((await res.json()).serverBaseUrl || "").replace(/\/+$/, "");
-    } catch {}
-    if (!base) {
-      setError(
-        "Ton serveur n'est pas configuré. Lance streamora_server.py, copie l'adresse https://…serveousercontent.com, colle-la dans « Adresse de mon serveur » puis réessaie."
-      );
-      return;
-    }
-
     setUploading(true);
     try {
-      // Public tunnels limit request size, so we send the file in small chunks.
-      const CHUNK = 6 * 1024 * 1024;
-      const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const total = file.size;
-      let publicUrl = "";
-
-      for (let offset = 0, index = 0; offset < total || index === 0; offset += CHUNK, index++) {
-        const slice = file.slice(offset, offset + CHUNK);
-        const isLast = offset + CHUNK >= total;
-        const res = await sendChunk(base, file.name, uploadId, index, isLast, slice, (loaded) =>
-          setProgress(Math.min(100, Math.round(((offset + loaded) / total) * 100)))
-        );
-        if (isLast) {
-          publicUrl = `${base}${res.url}`;
-          break;
-        }
-      }
-      setProgress(100);
+      const publicUrl = await uploadVideo(file, setProgress);
+      setPending(null);
       setUrl(publicUrl);
-      onUploaded?.(publicUrl);
+      onUploaded?.(publicUrl, file.name);
     } catch (err) {
-      setError((err as Error).message || "Échec de l'envoi");
+      setPending(readPending());
+      setError(
+        `${(err as Error).message || "Échec de l'envoi"} — rechoisis le même fichier pour reprendre là où ça s'est arrêté.`
+      );
     } finally {
       setUploading(false);
     }
-  }
-
-  function sendChunk(
-    base: string,
-    filename: string,
-    uploadId: string,
-    index: number,
-    isLast: boolean,
-    blob: Blob,
-    onProg: (loaded: number) => void
-  ): Promise<{ url: string }> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${base}/upload`);
-      xhr.setRequestHeader("Content-Type", "application/octet-stream");
-      xhr.setRequestHeader("X-Filename", encodeURIComponent(filename));
-      xhr.setRequestHeader("X-Upload-Id", uploadId);
-      xhr.setRequestHeader("X-Chunk-Index", String(index));
-      xhr.setRequestHeader("X-Last", isLast ? "1" : "0");
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) onProg(e.loaded);
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            resolve(JSON.parse(xhr.responseText));
-          } catch {
-            reject(new Error("Réponse du serveur invalide"));
-          }
-        } else {
-          reject(new Error(`Le serveur a répondu ${xhr.status}`));
-        }
-      };
-      xhr.onerror = () =>
-        reject(new Error("Impossible de joindre ton serveur (est-il bien lancé ?)"));
-      xhr.send(blob);
-    });
   }
 
   function copy() {
@@ -108,12 +59,27 @@ export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => vo
           <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4 4m4-4v12" />
         </svg>
         <h3 className="font-bold text-base">Uploader une vidéo &rarr; lien public</h3>
-        <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Nouveau</span>
       </div>
       <p className="text-xs text-gray-400 mb-4">
         Choisis une vidéo (n&apos;importe quelle durée). Elle est enregistrée sur <b>ton disque dur</b> (via ton serveur)
-        et tu récupères un <b>lien public</b> à coller dans un film/épisode.
+        et tu récupères un <b>lien public</b> à coller dans un film/épisode. Si l&apos;envoi est coupé, rechoisis le même
+        fichier : il <b>reprend où il s&apos;était arrêté</b>.
       </p>
+
+      {pending && !uploading && (
+        <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+          Envoi interrompu : <b>{pending.name}</b>. Choisis le <b>même fichier</b> ci-dessous pour le terminer.
+          <button
+            onClick={() => {
+              clearPending();
+              setPending(null);
+            }}
+            className="ml-2 underline hover:text-white"
+          >
+            Abandonner
+          </button>
+        </div>
+      )}
 
       <input
         ref={inputRef}
@@ -131,7 +97,7 @@ export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => vo
           onClick={() => inputRef.current?.click()}
           className="w-full rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-500 transition-colors"
         >
-          Choisir une vidéo à envoyer
+          {pending ? "Reprendre l'envoi (même fichier)" : "Choisir une vidéo à envoyer"}
         </button>
       )}
 
@@ -140,7 +106,9 @@ export function VideoUploader({ onUploaded }: { onUploaded?: (url: string) => vo
           <div className="h-3 w-full rounded-full bg-black/40 overflow-hidden">
             <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
           </div>
-          <p className="mt-2 text-xs text-gray-400">Envoi en cours… {progress}% (ne ferme pas la page)</p>
+          <p className="mt-2 text-xs text-gray-400">
+            Envoi en cours… {progress}% — garde la page ouverte (sinon tu pourras reprendre plus tard).
+          </p>
         </div>
       )}
 

@@ -181,7 +181,7 @@ class MediaHandler(BaseHTTPRequestHandler):
     def cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Range, Content-Type, X-Filename, X-Upload-Id, X-Chunk-Index, X-Last")
+        self.send_header("Access-Control-Allow-Headers", "Range, Content-Type, X-Filename, X-Upload-Id, X-Chunk-Index, X-Offset, X-Last")
         self.send_header("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges")
 
     def send_json(self, code, payload):
@@ -254,6 +254,8 @@ class MediaHandler(BaseHTTPRequestHandler):
             self.send_json(200, {"files": self._file_list(), "drives": [d["label"] for d in self.media_dirs]})
         elif path == "/api/ping":
             self.send_json(200, {"ok": True})
+        elif path == "/upload/status":
+            self._upload_status()
         elif path.startswith("/media/"):
             self._serve_media(path, head_only)
         else:
@@ -366,6 +368,25 @@ class MediaHandler(BaseHTTPRequestHandler):
                 left -= len(data)
 
     # ---- upload ----------------------------------------------------------
+    def _upload_id(self, raw):
+        return re.sub(r"[^A-Za-z0-9._-]", "_", raw)[:80] or "upload"
+
+    def _part_path(self, upload_id):
+        updir = os.path.join(self.media_dirs[0]["path"], UPLOAD_DIRNAME)
+        os.makedirs(updir, exist_ok=True)
+        return os.path.join(updir, f".part-{upload_id}")
+
+    def _upload_status(self):
+        """Combien d'octets sont deja arrives : permet de reprendre un envoi
+        interrompu au lieu de tout recommencer."""
+        if not self.media_dirs:
+            self.send_json(500, {"error": "Aucun disque disponible"})
+            return
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        upload_id = self._upload_id((query.get("id") or [""])[0])
+        part = self._part_path(upload_id)
+        self.send_json(200, {"received": os.path.getsize(part) if os.path.exists(part) else 0})
+
     def _upload(self):
         """Recoit UN morceau de video et l'ajoute au fichier sur le disque.
         Les liens publics limitent la taille d'une requete : le navigateur
@@ -382,19 +403,24 @@ class MediaHandler(BaseHTTPRequestHandler):
         name = safe_filename(urllib.parse.unquote(self.headers.get("X-Filename", "video.mp4")))
         if os.path.splitext(name)[1].lower() not in VIDEO_EXT:
             name += ".mp4"
-        upload_id = re.sub(r"[^A-Za-z0-9._-]", "_", self.headers.get("X-Upload-Id", name))[:80] or "upload"
+        upload_id = self._upload_id(self.headers.get("X-Upload-Id", name))
         try:
-            index = int(self.headers.get("X-Chunk-Index", "0"))
+            offset = int(self.headers.get("X-Offset", "0"))
         except ValueError:
-            index = 0
+            offset = 0
         is_last = self.headers.get("X-Last", "0") == "1"
 
-        updir = os.path.join(self.media_dirs[0]["path"], UPLOAD_DIRNAME)
-        os.makedirs(updir, exist_ok=True)
-        part = os.path.join(updir, f".part-{upload_id}")
+        part = self._part_path(upload_id)
+        have = os.path.getsize(part) if os.path.exists(part) else 0
+
+        # L'envoi peut reprendre apres une page fermee : le navigateur dit ou il
+        # en etait ; si ca ne correspond pas, on lui renvoie la bonne position.
+        if offset != have:
+            self.send_json(409, {"error": "Position differente", "received": have})
+            return
 
         left = length
-        with open(part, "wb" if index == 0 else "ab") as f:
+        with open(part, "ab" if have else "wb") as f:
             while left > 0:
                 data = self.rfile.read(min(1024 * 1024, left))
                 if not data:
@@ -406,6 +432,7 @@ class MediaHandler(BaseHTTPRequestHandler):
             self.send_json(200, {"ok": True})
             return
 
+        updir = os.path.dirname(part)
         dest = os.path.join(updir, name)
         stem, ext = os.path.splitext(name)
         n = 1
