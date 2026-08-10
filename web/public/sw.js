@@ -1,4 +1,4 @@
-const CACHE_NAME = "streamora-v2";
+const CACHE_NAME = "streamora-v3";
 
 self.addEventListener("install", () => {
   // Stay in "waiting" until the page tells us to activate (update button).

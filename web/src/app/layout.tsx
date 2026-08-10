@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { SessionProvider } from "@/components/SessionProvider";
 import "./globals.css";
 
@@ -14,6 +14,16 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
+  applicationName: "Streamora",
+  appleWebApp: { capable: true, title: "Streamora", statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#10b981",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -23,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className="bg-black">
+      <body className="bg-black antialiased overflow-x-hidden">
         <SessionProvider>
           {children}
         </SessionProvider>
