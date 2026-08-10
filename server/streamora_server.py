@@ -521,8 +521,8 @@ button.c.ok{background:#22c55e}
 <h1>Streamora &mdash; Mes videos</h1>
 <div class="sub">Disques partages : __DRIVES__</div>
 <div class="help">
-  <b>Comment faire :</b> clique <b>Copier le lien</b> a cote d'une video, puis colle-le
-  dans Streamora &rarr; <b>Admin</b> &rarr; le film ou l'episode &rarr; champ <b>URL Video</b>.
+  <b>Rien a faire :</b> Mr. Robot ajoute tout seul a Streamora les videos posees sur tes
+  disques, avec l'affiche, l'annee et le resume. Cette page sert juste a verifier ce qu'il voit.
   Garde la fenetre noire du serveur ouverte pendant que vous regardez.
 </div>
 <input class="search" id="q" placeholder="Rechercher une video...">
@@ -715,9 +715,9 @@ class Tunnel:
         if provider.get("note"):
             say("   (" + provider["note"] + ")")
         say("")
-        say("   1. Ouvre ce lien dans ton navigateur -> liste de tes videos")
-        say("   2. 'Copier le lien' -> colle dans Streamora (Admin > URL Video)")
-        say("   3. Garde CETTE fenetre ouverte pendant que vous regardez")
+        say("   Tu n'as RIEN a copier : Mr. Robot envoie cette adresse a Streamora")
+        say("   tout seul, et il la met a jour si elle change.")
+        say("   Garde juste CETTE fenetre ouverte pendant que vous regardez.")
         say("=" * 62 + "\n")
         threading.Thread(target=self._verify_and_publish, args=(url,), daemon=True).start()
 
@@ -827,6 +827,9 @@ class MrRobot:
 
     def _loop(self):
         self._log("en service : je surveille ton serveur et je repare tout seul.")
+        if self.tunnel and self.tunnel.sync_key:
+            self._log("je regarde tes disques toutes les 30 s : les nouveaux films "
+                      "partent sur le site tout seuls.")
         while True:
             time.sleep(30)
             try:
