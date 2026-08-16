@@ -7,6 +7,7 @@ interface Profile {
   id: string;
   name: string;
   avatarUrl: string;
+  locked?: boolean;
 }
 
 export const DEFAULT_AVATARS = [
@@ -28,7 +29,7 @@ function bgFor(seed: string) {
   return EMOJI_BG[h % EMOJI_BG.length];
 }
 
-function Avatar({ avatarUrl, name, className }: { avatarUrl: string; name: string; className?: string }) {
+export function Avatar({ avatarUrl, name, className }: { avatarUrl: string; name: string; className?: string }) {
   if (avatarUrl.startsWith("e:")) {
     return (
       <div
@@ -99,6 +100,7 @@ export function ProfileGate() {
   const [loading, setLoading] = useState(true);
   const [manage, setManage] = useState(false);
   const [editing, setEditing] = useState<Profile | "new" | null>(null);
+  const [locking, setLocking] = useState<Profile | null>(null);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -138,6 +140,10 @@ export function ProfileGate() {
   }
 
   function choose(p: Profile) {
+    if (p.locked) {
+      setLocking(p);
+      return;
+    }
     try {
       sessionStorage.setItem(STORAGE_KEY, p.id);
       localStorage.setItem("streamora-profile-name", p.name);
@@ -152,7 +158,16 @@ export function ProfileGate() {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#0b0f0b] flex flex-col items-center justify-center px-4 overflow-y-auto py-16">
-      {editing ? (
+      {locking ? (
+        <PinPrompt
+          profile={locking}
+          onCancel={() => setLocking(null)}
+          onUnlocked={(p) => {
+            setLocking(null);
+            choose({ ...p, locked: false });
+          }}
+        />
+      ) : editing ? (
         <ProfileEditor
           profile={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
@@ -187,7 +202,13 @@ export function ProfileGate() {
                       </div>
                     )}
                   </div>
-                  <span className="text-gray-400 group-hover:text-white text-sm sm:text-base truncate max-w-full">
+                  <span className="flex items-center gap-1 text-gray-400 group-hover:text-white text-sm sm:text-base truncate max-w-full">
+                    {p.locked && (
+                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <rect x="5" y="11" width="14" height="9" rx="2" />
+                        <path d="M8 11V8a4 4 0 018 0v3" />
+                      </svg>
+                    )}
                     {p.name}
                   </span>
                 </button>
@@ -402,6 +423,76 @@ function ProfileEditor({
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PinPrompt({
+  profile,
+  onCancel,
+  onUnlocked,
+}: {
+  profile: Profile;
+  onCancel: () => void;
+  onUnlocked: (p: Profile) => void;
+}) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
+
+  async function submit() {
+    setChecking(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/profiles/${profile.id}/unlock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      if (!res.ok) {
+        setError("Code incorrect");
+        setPin("");
+        setChecking(false);
+        return;
+      }
+      onUnlocked(profile);
+    } catch {
+      setError("Erreur de connexion");
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div className="w-full max-w-sm text-center">
+      <div className="mx-auto mb-6 h-20 w-20 overflow-hidden rounded-md">
+        <Avatar avatarUrl={profile.avatarUrl} name={profile.name} className="h-full w-full" />
+      </div>
+      <h1 className="mb-2 text-2xl font-semibold text-white">Profil verrouillé</h1>
+      <p className="mb-6 text-gray-400">Entre le code à 4 chiffres de {profile.name}.</p>
+      <input
+        autoFocus
+        value={pin}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+        onKeyDown={(e) => e.key === "Enter" && pin.length === 4 && submit()}
+        inputMode="numeric"
+        className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3.5 text-center text-2xl tracking-[0.5em] text-white focus:border-emerald-500 focus:outline-none"
+      />
+      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+      <div className="mt-6 flex gap-3">
+        <button
+          onClick={submit}
+          disabled={pin.length !== 4 || checking}
+          className="flex-1 rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+        >
+          {checking ? "…" : "Continuer"}
+        </button>
+        <button
+          onClick={onCancel}
+          className="rounded-lg border border-white/15 px-6 py-3 text-gray-300 hover:text-white"
+        >
+          Annuler
+        </button>
       </div>
     </div>
   );

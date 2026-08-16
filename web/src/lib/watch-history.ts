@@ -59,6 +59,10 @@ export function getLastWatchedForSeries(seriesId: string): WatchHistoryItem | nu
   return history.find(h => h.seriesId === seriesId && h.type === "episode") || null;
 }
 
+export function removeFromHistory(id: string, type: "film" | "episode") {
+  saveHistory(getHistory().filter((h) => !(h.id === id && h.type === type)));
+}
+
 export function clearHistory() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(STORAGE_KEY);

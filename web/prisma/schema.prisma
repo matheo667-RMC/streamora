@@ -146,6 +146,14 @@ model Profile {
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   avatarUrl String   @default("")
+  pin       String   @default("")        // 4 digits, empty = no lock
+  locale    String   @default("fr")
+  audioLang String   @default("fr")
+  subtitleLang String @default("fr")     // off | fr | en | es | ...
+  subtitleSize String @default("medium") // small | medium | large
+  autoplayNext Boolean @default(true)
+  autoplayPreview Boolean @default(true)
+  maturity  String   @default("18")      // max age rating allowed
   downloads Download[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

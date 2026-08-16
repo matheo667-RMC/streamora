@@ -5,12 +5,21 @@ import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { Avatar } from "@/components/ProfileGate";
+
+interface AccountProfile {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  locked?: boolean;
+}
 
 export function Navbar() {
   const { data: session } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profile, setProfile] = useState<{ name: string; avatar: string }>({ name: "", avatar: "" });
+  const [profiles, setProfiles] = useState<AccountProfile[]>([]);
 
   useEffect(() => {
     function handleScroll() {
@@ -39,6 +48,14 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
+    if (!session?.user) return;
+    fetch("/api/profiles", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setProfiles(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, [session?.user]);
+
+  useEffect(() => {
     if (!menuOpen) return;
     function handleClick(e: MouseEvent) {
       const target = e.target as HTMLElement;
@@ -49,6 +66,24 @@ export function Navbar() {
   }, [menuOpen]);
 
   const userRole = (session?.user as unknown as Record<string, unknown>)?.role;
+
+  function switchProfile(p: AccountProfile) {
+    setMenuOpen(false);
+    if (p.locked) {
+      // Le code PIN se demande sur l'ecran "Qui regarde ?".
+      try { sessionStorage.removeItem("streamora-profile"); } catch {}
+      window.location.href = "/";
+      return;
+    }
+    try {
+      sessionStorage.setItem("streamora-profile", p.id);
+      localStorage.setItem("streamora-profile-name", p.name);
+      localStorage.setItem("streamora-profile-avatar", p.avatarUrl);
+      if (session?.user?.email) localStorage.setItem("streamora-profile-account", session.user.email);
+    } catch {}
+    window.dispatchEvent(new CustomEvent("streamora-profile-changed"));
+    setProfile({ name: p.name, avatar: p.avatarUrl });
+  }
 
   return (
     <nav className={`fixed top-0 z-50 w-full transition-all duration-500 ${scrolled ? "bg-[#0f0f23]/95 backdrop-blur-md shadow-lg shadow-black/50" : "bg-gradient-to-b from-[#0f0f23]/90 via-[#0f0f23]/50 to-transparent"}`}>
@@ -141,6 +176,27 @@ export function Navbar() {
                     </Link>
                   )}
                   <div className="hidden md:block" />
+
+                  {/* Les autres profils du compte, comme sur Netflix : un clic suffit. */}
+                  {profiles
+                    .filter((p) => p.name !== profile.name)
+                    .map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => switchProfile(p)}
+                        className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+                      >
+                        <span className="h-6 w-6 overflow-hidden rounded">
+                          <Avatar avatarUrl={p.avatarUrl} name={p.name} className="h-full w-full" />
+                        </span>
+                        <span className="truncate">{p.name}</span>
+                      </button>
+                    ))}
+
+                  <Link href="/profil" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.4-9.4a2 2 0 112.8 2.8L11.8 15H9v-2.8l8.6-8.6z" /></svg>
+                    Gérer les profils
+                  </Link>
                   <button
                     onClick={() => {
                       try { sessionStorage.removeItem("streamora-profile"); } catch {}
@@ -155,7 +211,11 @@ export function Navbar() {
                   </button>
                   <Link href="/account" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                    Mon compte
+                    Compte
+                  </Link>
+                  <Link href="/aide" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9" strokeWidth={1.5} /><path strokeLinecap="round" strokeWidth={1.5} d="M9.5 9.5a2.5 2.5 0 113 2.5v1.5M12 17h.01" /></svg>
+                    Centre d&apos;aide
                   </Link>
                   <button
                     onClick={() => signOut({ callbackUrl: "/login" })}

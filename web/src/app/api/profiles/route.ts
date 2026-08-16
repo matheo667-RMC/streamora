@@ -29,7 +29,10 @@ export async function GET() {
     where: { userId },
     orderBy: { createdAt: "asc" },
   });
-  return NextResponse.json(profiles);
+  // The PIN never leaves the server: the page only needs to know it exists.
+  return NextResponse.json(
+    profiles.map(({ pin, ...p }) => ({ ...p, locked: pin.length > 0 }))
+  );
 }
 
 export async function POST(req: NextRequest) {
