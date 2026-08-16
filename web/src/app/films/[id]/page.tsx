@@ -52,11 +52,13 @@ export default async function FilmDetailPage({ params }: Props) {
         {(film.tmdbId || film.videoUrl) && (
           <div className="mx-auto max-w-[1000px] px-4 sm:px-6">
             <div className="rounded-xl overflow-hidden border border-white/5 shadow-2xl shadow-black/50">
-              {film.tmdbId ? (
-                <MultiServerPlayer tmdbId={film.tmdbId} type="movie" title={film.title} />
-              ) : (
+              {/* Le fichier du serveur passe avant tout : c'est la vraie video,
+                  sans pub. Les lecteurs externes ne servent qu'a defaut. */}
+              {film.videoUrl ? (
                 <VideoPlayer videoUrl={film.videoUrl} title={film.title} poster={film.posterUrl || undefined} />
-              )}
+              ) : film.tmdbId ? (
+                <MultiServerPlayer tmdbId={film.tmdbId} type="movie" title={film.title} />
+              ) : null}
             </div>
           </div>
         )}

@@ -113,7 +113,14 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
       {/* Video player */}
       {playingEp && (playingEp.videoUrl || seriesTmdbId) && (
         <div className="rounded-xl overflow-hidden bg-[#16213e] border border-white/5 shadow-2xl shadow-black/50">
-          {seriesTmdbId ? (
+          {/* L'episode pose sur le serveur passe avant les lecteurs externes. */}
+          {playingEp.videoUrl ? (
+            <VideoPlayer
+              videoUrl={playingEp.videoUrl}
+              title={`${seriesTitle} - ${playingEp.title || `Episode ${playingEp.number}`}`}
+              poster={poster}
+            />
+          ) : seriesTmdbId ? (
             <MultiServerPlayer
               tmdbId={seriesTmdbId}
               type="tv"
@@ -121,13 +128,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
               episode={playingEp.number}
               title={`${seriesTitle} - ${playingEp.title || `Episode ${playingEp.number}`}`}
             />
-          ) : (
-            <VideoPlayer
-              videoUrl={playingEp.videoUrl}
-              title={`${seriesTitle} - ${playingEp.title || `Episode ${playingEp.number}`}`}
-              poster={poster}
-            />
-          )}
+          ) : null}
           <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
             <p className="text-sm font-medium">
               <span className="text-emerald-400">S{String(playingEp.season).padStart(2, "0")}E{String(playingEp.number).padStart(2, "0")}</span>
@@ -135,7 +136,7 @@ export function EpisodePlayer({ seasons, episodes, seriesTitle, seriesId, series
               <span className="text-white">{playingEp.title || `Episode ${playingEp.number}`}</span>
             </p>
             <div className="flex items-center gap-4">
-              {!seriesTmdbId && <ReportBroken type="episode" id={playingEp.id} seriesId={seriesId} />}
+              {!playingEp.videoUrl && <ReportBroken type="episode" id={playingEp.id} seriesId={seriesId} />}
               {nextEp ? (
                 <button
                   onClick={() => { setActiveSeason(nextEp.season); handlePlayEp(nextEp); }}
