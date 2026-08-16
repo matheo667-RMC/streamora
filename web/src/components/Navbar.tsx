@@ -6,12 +6,15 @@ import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { Avatar } from "@/components/ProfileGate";
+import { InstallMenuItem } from "@/components/InstallApp";
 
 interface AccountProfile {
   id: string;
   name: string;
   avatarUrl: string;
   locked?: boolean;
+  subtitleLang?: string;
+  subtitleSize?: string;
 }
 
 export function Navbar() {
@@ -79,6 +82,8 @@ export function Navbar() {
       sessionStorage.setItem("streamora-profile", p.id);
       localStorage.setItem("streamora-profile-name", p.name);
       localStorage.setItem("streamora-profile-avatar", p.avatarUrl);
+      localStorage.setItem("streamora-subtitle-lang", p.subtitleLang || "fr");
+      localStorage.setItem("streamora-subtitle-size", p.subtitleSize || "medium");
       if (session?.user?.email) localStorage.setItem("streamora-profile-account", session.user.email);
     } catch {}
     window.dispatchEvent(new CustomEvent("streamora-profile-changed"));
@@ -217,6 +222,7 @@ export function Navbar() {
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9" strokeWidth={1.5} /><path strokeLinecap="round" strokeWidth={1.5} d="M9.5 9.5a2.5 2.5 0 113 2.5v1.5M12 17h.01" /></svg>
                     Centre d&apos;aide
                   </Link>
+                  <InstallMenuItem onDone={() => setMenuOpen(false)} />
                   <button
                     onClick={() => signOut({ callbackUrl: "/login" })}
                     className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10"

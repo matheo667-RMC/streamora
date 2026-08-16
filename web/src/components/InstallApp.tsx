@@ -9,6 +9,20 @@ interface BeforeInstallPromptEvent extends Event {
 
 type Steps = { title: string; steps: string[] };
 
+let swRegistered = false;
+
+// Chrome n'envoie l'evenement qu'une fois, souvent avant que le menu ne soit
+// affiche : on le garde de cote des le chargement, sinon le bouton croit que
+// l'installation est impossible.
+let savedPrompt: BeforeInstallPromptEvent | null = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    savedPrompt = e as BeforeInstallPromptEvent;
+    window.dispatchEvent(new Event("streamora-installable"));
+  });
+}
+
 /** Sans l'evenement d'installation (iPhone, Firefox, Safari Mac...), le bouton
  *  doit quand meme expliquer quoi faire au lieu de ne rien faire du tout. */
 function manualSteps(): Steps {
@@ -60,16 +74,20 @@ function manualSteps(): Steps {
   };
 }
 
-export function InstallApp() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+/** Etat d'installation partage : le meme bouton doit marcher dans le menu du
+ *  haut comme en bas de page. */
+function useInstall() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(savedPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [updating, setUpdating] = useState(false);
   const [help, setHelp] = useState<Steps | null>(null);
 
   useEffect(() => {
-    // Register service worker + watch for new versions.
-    if ("serviceWorker" in navigator) {
+    // Register service worker + watch for new versions (once per page: the
+    // button exists both in the top menu and in the footer).
+    if ("serviceWorker" in navigator && !swRegistered) {
+      swRegistered = true;
       navigator.serviceWorker.register("/sw.js").then((reg) => {
         // A version is already waiting to activate.
         if (reg.waiting && navigator.serviceWorker.controller) {
@@ -104,19 +122,16 @@ export function InstallApp() {
       (window.navigator as { standalone?: boolean }).standalone === true;
     if (standalone) setIsInstalled(true);
 
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
+    const handler = () => setDeferredPrompt(savedPrompt);
+    window.addEventListener("streamora-installable", handler);
 
     window.addEventListener("appinstalled", () => {
+      savedPrompt = null;
       setIsInstalled(true);
       setDeferredPrompt(null);
     });
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("streamora-installable", handler);
   }, []);
 
   function handleUpdate() {
@@ -134,29 +149,21 @@ export function InstallApp() {
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
       if (choice.outcome === "accepted") setIsInstalled(true);
+      savedPrompt = null;
       setDeferredPrompt(null);
     } catch {
       setHelp(manualSteps());
     }
   }
 
-  const updateButton = waitingWorker ? (
-    <button
-      onClick={handleUpdate}
-      disabled={updating}
-      className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-green-500 px-5 py-3 sm:py-2.5 text-sm font-semibold text-black hover:bg-green-400 transition-colors shadow-lg shadow-green-900/30 disabled:opacity-60 animate-pulse"
-    >
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-      {updating ? "Mise à jour…" : "Mettre à jour"}
-    </button>
-  ) : null;
+  return { isInstalled, waitingWorker, updating, help, setHelp, handleInstall, handleUpdate };
+}
 
-  const helpModal = help ? (
+function HelpModal({ help, onClose }: { help: Steps; onClose: () => void }) {
+  return (
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/80 p-4"
-      onClick={() => setHelp(null)}
+      onClick={onClose}
     >
       <div
         className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-950 p-5 text-left"
@@ -174,14 +181,56 @@ export function InstallApp() {
           ))}
         </ol>
         <button
-          onClick={() => setHelp(null)}
+          onClick={onClose}
           className="mt-5 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500"
         >
           J&apos;ai compris
         </button>
       </div>
     </div>
+  );
+}
+
+/** Entree "Installer Streamora" du menu en haut a droite. */
+export function InstallMenuItem({ onDone }: { onDone?: () => void }) {
+  const { isInstalled, help, setHelp, handleInstall } = useInstall();
+  if (isInstalled) return null;
+  return (
+    <>
+      <button
+        onClick={async () => {
+          await handleInstall();
+          onDone?.();
+        }}
+        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Installer Streamora
+      </button>
+      {help && <HelpModal help={help} onClose={() => setHelp(null)} />}
+    </>
+  );
+}
+
+export function InstallApp() {
+  const { isInstalled, waitingWorker, updating, help, setHelp, handleInstall, handleUpdate } = useInstall();
+
+  const updateButton = waitingWorker ? (
+    <button
+      onClick={handleUpdate}
+      disabled={updating}
+      className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-green-500 px-5 py-3 sm:py-2.5 text-sm font-semibold text-black hover:bg-green-400 transition-colors shadow-lg shadow-green-900/30 disabled:opacity-60 animate-pulse"
+    >
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      {updating ? "Mise à jour…" : "Mettre à jour"}
+    </button>
   ) : null;
+
+  const helpModal = help ? <HelpModal help={help} onClose={() => setHelp(null)} /> : null;
 
   if (isInstalled) {
     return (

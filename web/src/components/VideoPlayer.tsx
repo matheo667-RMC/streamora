@@ -9,6 +9,26 @@ interface Props {
   poster?: string;
 }
 
+interface SubtitleTrack {
+  lang: string;
+  label: string;
+  url: string;
+}
+
+const SUBTITLE_SIZE_CLASS: Record<string, string> = {
+  small: "cue-small",
+  medium: "cue-medium",
+  large: "cue-large",
+};
+
+function readProfilePref(key: string, fallback: string) {
+  try {
+    return localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // Check if URL is an external embed (vidzy, fsvid, uqload, etc.)
 function isEmbedUrl(url: string): boolean {
   const embedDomains = ["vidzy.cc", "vidzy.org", "vidzy.live", "fsvid.lol", "uqload.is", "uqload.to", "uqload.com", "uqload.io", "uqload.net", "doodstream", "voe.sx", "streamtape", "vidsrc", "2embed", "vidlink.pro", "streamsrcs", "cloudemb.com", "nontongo.win", "vidoza.net", "videzz.net", "mixdrop.co", "sendvid.com", "sibnet.ru", "jetload.net", "multiup.us", "videasy.net", "videasy.to"];
@@ -158,6 +178,10 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
   const [videoError, setVideoError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [subtitles, setSubtitles] = useState<SubtitleTrack[]>([]);
+  const [subtitleLang, setSubtitleLang] = useState("");
+  const [subtitleSize, setSubtitleSize] = useState("medium");
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const driveFileId = useMemo(() => extractDriveFileId(videoUrl), [videoUrl]);
@@ -181,6 +205,7 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
           const base = (data.serverBaseUrl || "").replace(/\/+$/, "");
           const path = videoUrl.startsWith("/") ? videoUrl : `/${videoUrl}`;
           if (!cancelled) setResolvedUrl(base ? `${base}${path}` : videoUrl);
+          if (base) loadSubtitles(base, path, cancelled);
         } catch {
           if (!cancelled) setResolvedUrl(videoUrl);
         }
@@ -190,9 +215,37 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
       setResolvedUrl(videoUrl);
       setLoading(false);
     }
+    async function loadSubtitles(base: string, path: string, stop: boolean) {
+      try {
+        const res = await fetch(`${base}/api/subs?path=${encodeURIComponent(path)}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        const tracks: SubtitleTrack[] = Array.isArray(data?.tracks) ? data.tracks : [];
+        if (stop) return;
+        setSubtitles(tracks.map((t) => ({ ...t, url: `${base}${t.url}` })));
+        setSubtitleSize(readProfilePref("streamora-subtitle-size", "medium"));
+        const preferred = readProfilePref("streamora-subtitle-lang", "fr");
+        const match = tracks.find((t) => t.lang === preferred);
+        if (match) setSubtitleLang(match.lang);
+      } catch {
+        /* pas de sous-titres : le lecteur marche quand meme */
+      }
+    }
+
     resolve();
     return () => { cancelled = true; };
   }, [videoUrl, driveFileId]);
+
+  // Le <track> doit etre active en JS : React ne pilote pas le mode d'affichage.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    for (let i = 0; i < video.textTracks.length; i++) {
+      const track = video.textTracks[i];
+      track.mode = track.language === subtitleLang ? "showing" : "disabled";
+    }
+  }, [subtitleLang, subtitles]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -309,7 +362,7 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
         ref={videoRef}
         src={resolvedUrl}
         poster={poster}
-        className="h-full w-full object-contain"
+        className={`h-full w-full object-contain ${SUBTITLE_SIZE_CLASS[subtitleSize] || "cue-medium"}`}
         style={{ filter: videoFilter }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => { handleLoadedMetadata(); setLoading(false); }}
@@ -322,7 +375,12 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
         onError={() => setVideoError(true)}
         onClick={togglePlay}
         preload="metadata"
-      />
+        crossOrigin="anonymous"
+      >
+        {subtitles.map((t) => (
+          <track key={t.url} kind="subtitles" src={t.url} srcLang={t.lang} label={t.label} />
+        ))}
+      </video>
 
       {/* Loading spinner */}
       {loading && isPlaying && (
@@ -390,6 +448,41 @@ function NativeVideoPlayer({ videoUrl, title, poster }: Props) {
             <input type="range" min="0" max="1" step="0.05" value={volume} onChange={changeVolume}
               className="w-20 h-1 rounded-full appearance-none bg-white/20 accent-emerald-500" />
           </div>
+
+          {/* Subtitles */}
+          {subtitles.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
+                className={`transition-colors ${subtitleLang ? "text-emerald-400" : "text-white/70 hover:text-white"}`}
+                title="Sous-titres"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path strokeLinecap="round" d="M7 14h5M14 14h3" />
+                </svg>
+              </button>
+              {showSubtitleMenu && (
+                <div className="absolute bottom-10 right-0 w-48 rounded-xl border border-white/10 bg-gray-950/95 backdrop-blur-lg p-2 shadow-2xl">
+                  <button
+                    onClick={() => { setSubtitleLang(""); setShowSubtitleMenu(false); }}
+                    className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/10 ${subtitleLang ? "text-gray-300" : "text-emerald-400 font-semibold"}`}
+                  >
+                    Desactives
+                  </button>
+                  {subtitles.map((t) => (
+                    <button
+                      key={t.url}
+                      onClick={() => { setSubtitleLang(t.lang); setShowSubtitleMenu(false); }}
+                      className={`block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/10 ${subtitleLang === t.lang ? "text-emerald-400 font-semibold" : "text-gray-300"}`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Settings */}
           <div className="relative">

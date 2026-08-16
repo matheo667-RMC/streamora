@@ -8,6 +8,8 @@ interface Profile {
   name: string;
   avatarUrl: string;
   locked?: boolean;
+  subtitleLang?: string;
+  subtitleSize?: string;
 }
 
 export const DEFAULT_AVATARS = [
@@ -148,6 +150,8 @@ export function ProfileGate() {
       sessionStorage.setItem(STORAGE_KEY, p.id);
       localStorage.setItem("streamora-profile-name", p.name);
       localStorage.setItem("streamora-profile-avatar", p.avatarUrl);
+      localStorage.setItem("streamora-subtitle-lang", p.subtitleLang || "fr");
+      localStorage.setItem("streamora-subtitle-size", p.subtitleSize || "medium");
       localStorage.setItem(OWNER_KEY, email);
     } catch {}
     window.dispatchEvent(new CustomEvent("streamora-profile-changed"));

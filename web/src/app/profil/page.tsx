@@ -182,15 +182,15 @@ export default function ProfilSettingsPage() {
         return false;
       }
       setProfiles((list) => list.map((p) => (p.id === data.id ? { ...p, ...data } : p)));
-      if (changes.name !== undefined || changes.avatarUrl !== undefined) {
-        try {
-          if (sessionStorage.getItem("streamora-profile") === data.id) {
-            localStorage.setItem("streamora-profile-name", data.name);
-            localStorage.setItem("streamora-profile-avatar", data.avatarUrl);
-            window.dispatchEvent(new CustomEvent("streamora-profile-changed"));
-          }
-        } catch {}
-      }
+      try {
+        if (sessionStorage.getItem("streamora-profile") === data.id) {
+          localStorage.setItem("streamora-profile-name", data.name);
+          localStorage.setItem("streamora-profile-avatar", data.avatarUrl);
+          localStorage.setItem("streamora-subtitle-lang", data.subtitleLang);
+          localStorage.setItem("streamora-subtitle-size", data.subtitleSize);
+          window.dispatchEvent(new CustomEvent("streamora-profile-changed"));
+        }
+      } catch {}
       setSaving(false);
       return true;
     } catch {

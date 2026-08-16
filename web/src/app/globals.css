@@ -97,3 +97,14 @@ input:focus-visible,
     border-radius: 6px;
   }
 }
+
+/* Subtitle size chosen in the profile settings */
+.cue-small::cue {
+  font-size: 70%;
+}
+.cue-medium::cue {
+  font-size: 100%;
+}
+.cue-large::cue {
+  font-size: 150%;
+}

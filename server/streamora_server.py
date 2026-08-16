@@ -37,8 +37,22 @@ UPLOAD_DIRNAME = "Streamora-Uploads"
 CHUNK = 256 * 1024
 
 VIDEO_EXT = {".mp4", ".m4v", ".webm", ".ogv", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".ts", ".m2ts", ".mpg", ".mpeg"}
-OTHER_EXT = {".mp3", ".m4a", ".aac", ".flac", ".wav", ".ogg", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".srt", ".vtt", ".ass"}
+SUB_EXT = {".srt", ".vtt", ".ass", ".ssa"}
+OTHER_EXT = {".mp3", ".m4a", ".aac", ".flac", ".wav", ".ogg", ".jpg", ".jpeg", ".png", ".webp", ".gif"} | SUB_EXT
 ALLOWED_EXT = VIDEO_EXT | OTHER_EXT
+
+LANG_NAMES = {
+    "fr": "Francais", "en": "English", "es": "Espanol", "pt": "Portugues",
+    "de": "Deutsch", "it": "Italiano", "ar": "Arabe", "nl": "Nederlands",
+}
+LANG_ALIASES = {
+    "": "fr", "vf": "fr", "fr": "fr", "fre": "fr", "fra": "fr", "french": "fr",
+    "francais": "fr", "vostfr": "fr", "forced": "fr",
+    "en": "en", "eng": "en", "english": "en", "vo": "en",
+    "es": "es", "spa": "es", "spanish": "es", "espanol": "es",
+    "pt": "pt", "por": "pt", "de": "de", "ger": "de", "deu": "de",
+    "it": "it", "ita": "it", "ar": "ar", "ara": "ar", "nl": "nl",
+}
 
 SKIP_DIRS = {
     "$recycle.bin", "system volume information", "windows", "program files",
@@ -169,6 +183,61 @@ def parse_range(header, size):
     if start >= size:
         return None
     return start, min(end, size - 1)
+
+
+def srt_to_vtt(text):
+    """Le navigateur ne lit que le WebVTT : on convertit le .srt a la volee."""
+    text = text.replace("\r\n", "\n").lstrip("\ufeff")
+    text = re.sub(r"(\d\d:\d\d:\d\d),(\d\d\d)", r"\1.\2", text)
+    return "WEBVTT\n\n" + text
+
+
+def ass_to_vtt(text):
+    """Garde le texte des dialogues d'un .ass et jette la mise en forme."""
+    lines = ["WEBVTT", ""]
+
+    def stamp(raw):
+        parts = raw.strip().split(":")
+        if len(parts) != 3:
+            return "00:00:00.000"
+        h, m, s = parts
+        sec, _, cs = s.partition(".")
+        return f"{int(h):02d}:{int(m):02d}:{int(sec):02d}.{(cs + '00')[:3] if cs else '000'}"
+
+    for line in text.replace("\r\n", "\n").split("\n"):
+        if not line.startswith("Dialogue:"):
+            continue
+        fields = line[len("Dialogue:"):].split(",", 9)
+        if len(fields) < 10:
+            continue
+        body = re.sub(r"\{[^}]*\}", "", fields[9]).replace("\\N", "\n").strip()
+        if body:
+            lines += [f"{stamp(fields[1])} --> {stamp(fields[2])}", body, ""]
+    return "\n".join(lines)
+
+
+def find_subtitles(video_full, idx, base):
+    """Les sous-titres poses a cote de la video (film.srt, film.en.vtt...)."""
+    folder = os.path.dirname(video_full)
+    stem = os.path.splitext(os.path.basename(video_full))[0].lower()
+    tracks = []
+    try:
+        names = sorted(os.listdir(folder))
+    except OSError:
+        return tracks
+    for name in names:
+        sub_stem, ext = os.path.splitext(name)
+        if ext.lower() not in SUB_EXT or not sub_stem.lower().startswith(stem):
+            continue
+        tag = sub_stem.lower()[len(stem):].strip(" ._-")
+        lang = LANG_ALIASES.get(tag, tag[:2] if len(tag) >= 2 else "fr")
+        rel = os.path.relpath(os.path.join(folder, name), base).replace("\\", "/")
+        tracks.append({
+            "lang": lang,
+            "label": LANG_NAMES.get(lang, lang.upper()),
+            "url": f"/media/{idx}/" + urllib.parse.quote(rel),
+        })
+    return tracks
 
 
 def list_media_files():
@@ -317,6 +386,8 @@ class MediaHandler(BaseHTTPRequestHandler):
             self.send_json(200, {"files": self._file_list(), "drives": [d["label"] for d in self.media_dirs]})
         elif path == "/api/ping":
             self.send_json(200, {"ok": True})
+        elif path == "/api/subs":
+            self._subtitles()
         elif path == "/upload/status":
             self._upload_status()
         elif path.startswith("/media/"):
@@ -374,6 +445,11 @@ class MediaHandler(BaseHTTPRequestHandler):
             self.send_text(403, "Type de fichier non autorise")
             return
 
+        ext = os.path.splitext(full)[1].lower()
+        if ext in SUB_EXT:
+            self._serve_subtitle(full, ext, head_only)
+            return
+
         size = os.path.getsize(full)
         ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
         if full.lower().endswith(".mkv"):
@@ -406,6 +482,39 @@ class MediaHandler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(data)
                 left -= len(data)
+
+    def _subtitles(self):
+        """Liste les sous-titres disponibles pour une video (/api/subs?path=...)."""
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        media = (query.get("path") or [""])[0]
+        if not media.startswith("/"):
+            media = "/" + media
+        full = self._resolve(media)
+        if not full:
+            self.send_json(200, {"tracks": []})
+            return
+        idx = int(media.split("/", 3)[2])
+        base = self.media_dirs[idx]["path"]
+        self.send_json(200, {"tracks": find_subtitles(full, idx, base)})
+
+    def _serve_subtitle(self, full, ext, head_only):
+        """Toujours renvoye en WebVTT, seul format lu par les navigateurs."""
+        with open(full, "r", encoding="utf-8", errors="replace") as f:
+            raw = f.read()
+        if ext == ".srt":
+            body = srt_to_vtt(raw)
+        elif ext in (".ass", ".ssa"):
+            body = ass_to_vtt(raw)
+        else:
+            body = raw
+        data = body.encode("utf-8")
+        self.send_response(200)
+        self.cors()
+        self.send_header("Content-Type", "text/vtt; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        if not head_only:
+            self.wfile.write(data)
 
     # ---- upload ----------------------------------------------------------
     def _upload_id(self, raw):
@@ -966,6 +1075,147 @@ class MrRobot:
                 pass
 
 
+class SubtitleMaker:
+    """Ecoute le son des videos et ecrit les sous-titres a cote du fichier.
+    Tout se fait sur ce PC avec Whisper : gratuit, et rien ne sort du disque
+    a part le texte envoye a la traduction."""
+
+    LANGS = ("fr", "en")
+
+    def __init__(self, langs=LANGS):
+        self.langs = tuple(langs)
+        self.model = None
+        self.failed = set()
+
+    def start(self):
+        threading.Thread(target=self._loop, daemon=True).start()
+
+    def _log(self, text):
+        say(f"[Mr. Robot] {text}")
+
+    def _loop(self):
+        while True:
+            time.sleep(60)
+            try:
+                video = self._next_video()
+                if video:
+                    self._make(video)
+            except Exception as exc:  # noqa: BLE001
+                self._log(f"sous-titres impossibles pour l'instant ({exc}).")
+
+    def _next_video(self):
+        """La premiere video sans aucun sous-titre a cote d'elle."""
+        now = time.time()
+        for f in list_media_files():
+            if os.path.splitext(f["name"])[1].lower() not in VIDEO_EXT:
+                continue
+            if now - f["modified"] < 120:
+                continue
+            parts = f["url"].split("/", 3)
+            idx = int(parts[2])
+            base = MediaHandler.media_dirs[idx]["path"]
+            full = os.path.join(base, urllib.parse.unquote(parts[3]).replace("/", os.sep))
+            if full in self.failed or not os.path.isfile(full):
+                continue
+            if find_subtitles(full, idx, base):
+                continue
+            return full
+        return None
+
+    def _load_model(self):
+        if self.model is not None:
+            return self.model
+        try:
+            from faster_whisper import WhisperModel
+        except ImportError:
+            self._log("j'installe l'outil de sous-titres (une seule fois, ~2 min)...")
+            code = subprocess.call(
+                [sys.executable, "-m", "pip", "install", "--quiet", "faster-whisper"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            if code != 0:
+                raise RuntimeError("installation de faster-whisper impossible")
+            from faster_whisper import WhisperModel
+        self._log("je prepare le modele de sous-titres (telechargement unique).")
+        self.model = WhisperModel("small", device="cpu", compute_type="int8")
+        return self.model
+
+    def _make(self, video):
+        name = os.path.basename(video)
+        self._log(f"je fabrique les sous-titres de « {name} » (ca prend quelques minutes).")
+        try:
+            model = self._load_model()
+            segments, info = model.transcribe(video, vad_filter=True)
+            cues = [(s.start, s.end, s.text.strip()) for s in segments if s.text.strip()]
+        except Exception as exc:  # noqa: BLE001
+            self.failed.add(video)
+            self._log(f"sous-titres abandonnes pour « {name} » ({exc}).")
+            return
+        if not cues:
+            self.failed.add(video)
+            return
+
+        source = (info.language or "fr")[:2]
+        stem = os.path.splitext(video)[0]
+        written = [source]
+        self._write(f"{stem}.{source}.vtt", cues)
+        for lang in self.langs:
+            if lang == source:
+                continue
+            translated = translate_lines([c[2] for c in cues], source, lang)
+            if translated:
+                self._write(f"{stem}.{lang}.vtt",
+                            [(c[0], c[1], t) for c, t in zip(cues, translated)])
+                written.append(lang)
+        self._log(f"sous-titres prets pour « {name} » : {', '.join(written)}.")
+
+    def _write(self, path, cues):
+        def stamp(t):
+            h, rest = divmod(max(t, 0), 3600)
+            m, s = divmod(rest, 60)
+            return f"{int(h):02d}:{int(m):02d}:{s:06.3f}"
+
+        lines = ["WEBVTT", ""]
+        for start, end, text in cues:
+            lines += [f"{stamp(start)} --> {stamp(end)}", text, ""]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+
+def translate_lines(lines, source, target):
+    """Traduction gratuite ligne par ligne, par paquets pour rester rapide."""
+    out, batch, size = [], [], 0
+    marker = "\n@@\n"
+
+    def flush():
+        nonlocal batch, size
+        if not batch:
+            return True
+        url = ("https://translate.googleapis.com/translate_a/single?client=gtx"
+               f"&sl={source}&tl={target}&dt=t&q=" + urllib.parse.quote(marker.join(batch)))
+        try:
+            with urllib.request.urlopen(url, timeout=60) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001
+            return False
+        joined = "".join(part[0] for part in (data[0] or []) if part and part[0])
+        pieces = [p.strip() for p in joined.split("@@")]
+        if len(pieces) != len(batch):
+            return False
+        out.extend(pieces)
+        batch, size = [], 0
+        return True
+
+    for line in lines:
+        if size + len(line) > 1200 and not flush():
+            return []
+        batch.append(line)
+        size += len(line)
+    if not flush():
+        return []
+    return out if len(out) == len(lines) else []
+
+
 def watch_drives(interval=15):
     """Une cle USB branchee apres le demarrage doit apparaitre sans relancer le
     serveur ; les disques deja listes gardent leur numero pour ne pas casser les
@@ -1025,6 +1275,8 @@ def main():
     # Mr. Robot tourne meme sans lien public : c'est lui qui ajoute au site les
     # films poses sur les disques.
     MrRobot(port, tunnel, config.get("site_url", SITE_URL)).start()
+    if config.get("subtitles", True):
+        SubtitleMaker().start()
 
     try:
         httpd.serve_forever()
