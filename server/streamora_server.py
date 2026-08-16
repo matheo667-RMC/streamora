@@ -838,6 +838,7 @@ class MrRobot:
                 self._check_link()
                 self._clean_parts()
                 self._import_new()
+                self._fix_posters()
             except Exception as exc:  # noqa: BLE001
                 self._log(f"souci pendant la verification ({exc}), je reessaie.")
 
@@ -928,6 +929,22 @@ class MrRobot:
         if added:
             self._log(f"{data.get('films', 0)} film(s) et {data.get('episodes', 0)} episode(s) "
                       "ajoutes au site avec affiche, annee et resume.")
+
+    def _fix_posters(self):
+        """Un film sans affiche fait une case vide dans le catalogue : le site
+        recherche l'image ailleurs (iTunes, Wikipedia) jusqu'a en trouver une."""
+        key = self.tunnel.sync_key if self.tunnel else ""
+        if not (self.site_url and key):
+            return
+        req = urllib.request.Request(self.site_url + "/api/admin/fix-posters", data=b"{}",
+                                     headers={"Content-Type": "application/json", "X-Sync-Key": key})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                data = json.loads(resp.read() or b"{}")
+        except Exception:  # noqa: BLE001
+            return
+        if int(data.get("fixed", 0)):
+            self._log(f"{data['fixed']} affiche(s) retrouvee(s) pour des titres qui n'en avaient pas.")
 
     def _clean_parts(self):
         """Un envoi abandonne depuis une semaine ne sera jamais repris : on

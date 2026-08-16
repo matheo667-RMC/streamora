@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { FOUNDER_EMAIL } from "@/lib/subscription";
+import { findPoster } from "@/lib/poster";
+import { allowedFromAdminOrServer } from "@/lib/sync-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -90,21 +90,8 @@ async function seasonTitles(tmdbId: number, season: number): Promise<Record<numb
   }
 }
 
-async function allowed(req: NextRequest): Promise<boolean> {
-  const session = await auth();
-  if (session?.user?.email === FOUNDER_EMAIL || (session?.user as { role?: string })?.role === "admin") {
-    return true;
-  }
-  // Le serveur du PC importe aussi tout seul les nouveaux fichiers : il
-  // s'authentifie avec la cle de synchro.
-  const key = req.headers.get("x-sync-key") || "";
-  if (!key) return false;
-  const s = await prisma.siteSettings.findUnique({ where: { id: "main" } });
-  return !!s?.serverSyncKey && s.serverSyncKey === key;
-}
-
 export async function POST(req: NextRequest) {
-  if (!(await allowed(req))) {
+  if (!(await allowedFromAdminOrServer(req))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
@@ -135,12 +122,13 @@ export async function POST(req: NextRequest) {
           series = { id: existing.id, tmdbId: existing.tmdbId || 0 };
         } else {
           const meta = await tmdb(ep.title, "tv", 0);
+          const poster = meta?.posterUrl || (await findPoster(meta?.title || ep.title, "tv", meta?.tmdbId));
           const created = await prisma.series.create({
             data: {
               title: meta?.title || ep.title,
               description: meta?.description || "",
               category: meta?.category || "Autre",
-              posterUrl: meta?.posterUrl || "",
+              posterUrl: poster,
               year: meta?.year || 2024,
               tmdbId: meta?.tmdbId || null,
             },
@@ -180,12 +168,13 @@ export async function POST(req: NextRequest) {
     const title = cleanTitle(file.name).replace(/\b(19\d{2}|20\d{2})\b/g, "").replace(/\s+/g, " ").trim();
     if (!title) continue;
     const meta = await tmdb(title, "movie", year);
+    const poster = meta?.posterUrl || (await findPoster(meta?.title || title, "movie", meta?.tmdbId));
     await prisma.film.create({
       data: {
         title: meta?.title || title,
         description: meta?.description || "",
         category: meta?.category || "Autre",
-        posterUrl: meta?.posterUrl || "",
+        posterUrl: poster,
         videoUrl: file.url,
         year: meta?.year || year || 2024,
         tmdbId: meta?.tmdbId || null,
